@@ -126,6 +126,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteGame(id: string): Promise<void> {
+    // First delete all downloads associated with this game
+    await db.delete(downloads).where(eq(downloads.gameId, id));
+    // Then delete the game
     await db.delete(games).where(eq(games.id, id));
   }
 
