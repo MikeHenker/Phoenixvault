@@ -1,23 +1,38 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { useLocation } from "wouter";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Play, Download, TrendingUp, Star } from "lucide-react";
-import type { Game } from "@shared/schema";
+import { Gamepad2, Download, Star, TrendingUp } from "lucide-react";
+import type { Game, User } from "@shared/schema";
 import heroImage from "@assets/generated_images/Epic_gaming_hero_banner_836d68df.png";
 
 export default function Home() {
-  const { data: games, isLoading } = useQuery<Game[]>({
-    queryKey: ["/api/games"],
-  });
+  const [, setLocation] = useLocation();
 
-  const { data: session } = useQuery<{ user: any }>({
+  const { data: session } = useQuery<{ user: User | null }>({
     queryKey: ["/api/session"],
   });
 
+  const { data: games } = useQuery<Game[]>({
+    queryKey: ["/api/games"],
+  });
+
+  // Redirect to registration if not logged in
+  useEffect(() => {
+    if (session && !session.user) {
+      setLocation("/auth/register");
+    }
+  }, [session, setLocation]);
+
   const featuredGames = games?.filter((game) => game.featured).slice(0, 1) || [];
   const recentGames = games?.slice(0, 8) || [];
+
+  // Don't render content if redirecting
+  if (!session?.user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background">
