@@ -55,11 +55,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Create user
+      // Create user (requires admin approval)
       const user = await storage.createUser({
         username,
         password: hashedPassword,
         isAdmin: false,
+        isApproved: false,
         licenseKey,
       });
 
@@ -100,6 +101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             username: "admin",
             password: hashedPassword,
             isAdmin: true,
+            isApproved: true,
             licenseKey: null,
           });
         }
@@ -118,6 +120,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validPassword = await bcrypt.compare(password, user.password);
       if (!validPassword) {
         return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      // Check if account is approved
+      if (!user.isApproved) {
+        return res.status(403).json({ message: "Account pending admin approval" });
       }
 
       req.session.userId = user.id;
@@ -278,6 +285,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.patch("/api/admin/users/:id", requireAdmin, async (req, res) => {
+    try {
+      const user = await storage.updateUser(req.params.id, req.body);
+      const { password, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: "Failed to update user" });
     }
   });
 

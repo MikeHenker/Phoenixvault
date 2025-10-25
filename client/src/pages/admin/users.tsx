@@ -1,99 +1,142 @@
-import { useQuery } from "@tanstack/react-query";
-import { Card } from "@/components/ui/card";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { CheckCircle2, XCircle, Shield } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { CheckCircle2, XCircle } from "lucide-react";
 import type { User } from "@shared/schema";
 
 export default function AdminUsers() {
-  const { data: users, isLoading } = useQuery<User[]>({
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: users } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
   });
 
+  const approveUserMutation = useMutation({
+    mutationFn: async ({ userId, isApproved }: { userId: string; isApproved: boolean }) => {
+      return await apiRequest("PATCH", `/api/admin/users/${userId}`, { isApproved });
+    },
+    onSuccess: (_, { isApproved }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({
+        title: isApproved ? "User approved" : "User rejected",
+        description: isApproved
+          ? "User can now log in to their account"
+          : "User account has been rejected",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <h1
           className="text-3xl font-bold mb-2"
           style={{ fontFamily: "Montserrat, sans-serif" }}
-          data-testid="text-admin-users-title"
+          data-testid="text-users-title"
         >
-          Manage Users
+          Users Management
         </h1>
-        <p className="text-muted-foreground" data-testid="text-admin-users-subtitle">
-          View all registered users and their license status
+        <p className="text-muted-foreground" data-testid="text-users-subtitle">
+          Manage registered users and their access
         </p>
       </div>
 
       <Card>
-        {isLoading ? (
-          <div className="p-12 text-center">
-            <p className="text-muted-foreground">Loading users...</p>
-          </div>
-        ) : users && users.length > 0 ? (
+        <CardHeader>
+          <CardTitle data-testid="text-users-card-title">Registered Users</CardTitle>
+          <CardDescription data-testid="text-users-card-description">
+            View and manage all registered users. Approve or reject pending accounts.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead data-testid="header-user-username">Username</TableHead>
-                <TableHead data-testid="header-user-role">Role</TableHead>
-                <TableHead data-testid="header-user-license">License Key</TableHead>
-                <TableHead data-testid="header-user-joined">Joined</TableHead>
+                <TableHead data-testid="table-head-username">Username</TableHead>
+                <TableHead data-testid="table-head-license">License Key</TableHead>
+                <TableHead data-testid="table-head-role">Role</TableHead>
+                <TableHead data-testid="table-head-status">Status</TableHead>
+                <TableHead data-testid="table-head-registered">Registered</TableHead>
+                <TableHead data-testid="table-head-actions">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id} data-testid={`row-user-${user.id}`}>
-                  <TableCell className="font-medium" data-testid={`text-user-username-${user.id}`}>
+              {users?.map((user) => (
+                <TableRow key={user.id} data-testid={`user-row-${user.username}`}>
+                  <TableCell className="font-medium" data-testid={`user-username-${user.username}`}>
                     {user.username}
                   </TableCell>
-                  <TableCell>
+                  <TableCell data-testid={`user-license-${user.username}`}>
+                    {user.licenseKey || "N/A"}
+                  </TableCell>
+                  <TableCell data-testid={`user-role-${user.username}`}>
                     {user.isAdmin ? (
-                      <Badge className="bg-accent text-accent-foreground" data-testid={`badge-admin-${user.id}`}>
-                        <Shield className="w-3 h-3 mr-1" />
-                        Admin
+                      <Badge data-testid={`badge-admin-${user.username}`}>Admin</Badge>
+                    ) : (
+                      <Badge variant="secondary" data-testid={`badge-user-${user.username}`}>User</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell data-testid={`user-status-${user.username}`}>
+                    {user.isApproved ? (
+                      <Badge variant="outline" className="text-green-600 border-green-600">
+                        Approved
                       </Badge>
                     ) : (
-                      <Badge variant="secondary" data-testid={`badge-user-${user.id}`}>
-                        User
+                      <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                        Pending
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell>
-                    {user.licenseKey ? (
-                      <div className="flex items-center gap-2">
-                        <code className="text-sm font-mono bg-muted px-2 py-1 rounded" data-testid={`text-user-license-${user.id}`}>
-                          {user.licenseKey}
-                        </code>
-                        <CheckCircle2 className="w-4 h-4 text-green-500" />
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <span>No license</span>
-                        <XCircle className="w-4 h-4" />
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell data-testid={`text-user-joined-${user.id}`}>
+                  <TableCell data-testid={`user-registered-${user.username}`}>
                     {new Date(user.createdAt).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell data-testid={`user-actions-${user.username}`}>
+                    {!user.isAdmin && (
+                      <div className="flex gap-2">
+                        {!user.isApproved && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => approveUserMutation.mutate({ userId: user.id, isApproved: true })}
+                            disabled={approveUserMutation.isPending}
+                            data-testid={`button-approve-${user.username}`}
+                          >
+                            <CheckCircle2 className="w-4 h-4 mr-1" />
+                            Approve
+                          </Button>
+                        )}
+                        {user.isApproved && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => approveUserMutation.mutate({ userId: user.id, isApproved: false })}
+                            disabled={approveUserMutation.isPending}
+                            data-testid={`button-revoke-${user.username}`}
+                          >
+                            <XCircle className="w-4 h-4 mr-1" />
+                            Revoke
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-        ) : (
-          <div className="p-12 text-center">
-            <p className="text-muted-foreground" data-testid="text-no-users">
-              No users registered yet
-            </p>
-          </div>
-        )}
+        </CardContent>
       </Card>
     </div>
   );

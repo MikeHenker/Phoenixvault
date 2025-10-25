@@ -10,6 +10,7 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   isAdmin: boolean("is_admin").notNull().default(false),
+  isApproved: boolean("is_approved").notNull().default(false),
   licenseKey: text("license_key"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

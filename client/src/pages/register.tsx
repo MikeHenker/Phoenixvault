@@ -34,12 +34,11 @@ export default function Register() {
       return await apiRequest("POST", "/api/auth/register", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/session"] });
       toast({
         title: "Registration successful!",
-        description: "Your account has been created. Welcome to GameVault!",
+        description: "Your account is pending admin approval. You'll be able to log in once approved.",
       });
-      setLocation("/library");
+      setLocation("/auth/login");
     },
     onError: (error: Error) => {
       toast({
