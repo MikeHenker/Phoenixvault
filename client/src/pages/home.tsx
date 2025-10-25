@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Gamepad2, Download, Star, TrendingUp } from "lucide-react";
+import { Gamepad2, Download, Star, TrendingUp, Play } from "lucide-react";
 import type { Game, User } from "@shared/schema";
 import heroImage from "@assets/generated_images/Epic_gaming_hero_banner_836d68df.png";
 
