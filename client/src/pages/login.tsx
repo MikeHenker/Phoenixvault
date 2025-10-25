@@ -16,6 +16,7 @@ export default function Login() {
   const queryClient = useQueryClient();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [isAdminMode, setIsAdminMode] = useState(false);
 
   const { data: session } = useQuery<{ user: UserType | null }>({
     queryKey: ["/api/session"],
@@ -51,7 +52,11 @@ export default function Login() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    loginMutation.mutate({ username, password });
+    if (isAdminMode) {
+      loginMutation.mutate({ username: "admin", password });
+    } else {
+      loginMutation.mutate({ username, password });
+    }
   };
 
   return (
@@ -83,36 +88,57 @@ export default function Login() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="mb-4 flex gap-2">
+              <Button
+                type="button"
+                variant={!isAdminMode ? "default" : "outline"}
+                onClick={() => setIsAdminMode(false)}
+                className="flex-1"
+              >
+                User Login
+              </Button>
+              <Button
+                type="button"
+                variant={isAdminMode ? "default" : "outline"}
+                onClick={() => setIsAdminMode(true)}
+                className="flex-1"
+              >
+                Admin Login
+              </Button>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="username" data-testid="label-username">
-                  Username
-                </Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="username"
-                    type="text"
-                    placeholder="Enter your username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="pl-10"
-                    required
-                    data-testid="input-username"
-                  />
+              {!isAdminMode && (
+                <div className="space-y-2">
+                  <Label htmlFor="username" data-testid="label-username">
+                    Username
+                  </Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="username"
+                      type="text"
+                      placeholder="Enter your username"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="pl-10"
+                      required
+                      data-testid="input-username"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="password" data-testid="label-password">
-                  Password
+                  {isAdminMode ? "Admin Password" : "Password"}
                 </Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     id="password"
                     type="password"
-                    placeholder="Enter your password"
+                    placeholder={isAdminMode ? "Enter admin password" : "Enter your password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10"
@@ -128,7 +154,7 @@ export default function Login() {
                 disabled={loginMutation.isPending}
                 data-testid="button-login"
               >
-                {loginMutation.isPending ? "Signing in..." : "Sign In"}
+                {loginMutation.isPending ? "Signing in..." : isAdminMode ? "Sign In as Admin" : "Sign In"}
               </Button>
             </form>
 

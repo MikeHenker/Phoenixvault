@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+
 import { useEffect } from "react";
+import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import type { User } from "@shared/schema";
 
 export default function ProtectedRoute({ children, requireAdmin }: { children: React.ReactNode; requireAdmin?: boolean }) {
@@ -21,7 +22,6 @@ export default function ProtectedRoute({ children, requireAdmin }: { children: R
     return null;
   }
 
-  // Redirect unauthenticated users to registration
   if (!session?.user) {
     return null;
   }
