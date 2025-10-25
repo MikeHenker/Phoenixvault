@@ -46,6 +46,14 @@ export const downloads = pgTable("downloads", {
   downloadedAt: timestamp("downloaded_at").notNull().defaultNow(),
 });
 
+// User library - games added to user's personal collection
+export const userLibrary = pgTable("user_library", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  gameId: varchar("game_id").notNull().references(() => games.id),
+  addedAt: timestamp("added_at").notNull().defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   downloads: many(downloads),
@@ -77,6 +85,17 @@ export const downloadsRelations = relations(downloads, ({ one }) => ({
   }),
 }));
 
+export const userLibraryRelations = relations(userLibrary, ({ one }) => ({
+  user: one(users, {
+    fields: [userLibrary.userId],
+    references: [users.id],
+  }),
+  game: one(games, {
+    fields: [userLibrary.gameId],
+    references: [games.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -100,6 +119,11 @@ export const insertDownloadSchema = createInsertSchema(downloads).omit({
   downloadedAt: true,
 });
 
+export const insertUserLibrarySchema = createInsertSchema(userLibrary).omit({
+  id: true,
+  addedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -112,3 +136,6 @@ export type InsertGame = z.infer<typeof insertGameSchema>;
 
 export type Download = typeof downloads.$inferSelect;
 export type InsertDownload = z.infer<typeof insertDownloadSchema>;
+
+export type UserLibrary = typeof userLibrary.$inferSelect;
+export type InsertUserLibrary = z.infer<typeof insertUserLibrarySchema>;

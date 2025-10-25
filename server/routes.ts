@@ -196,6 +196,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User Library Routes
+  app.get("/api/library", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const libraryEntries = await storage.getUserLibrary(req.session.userId);
+      const gamesWithDetails = await Promise.all(
+        libraryEntries.map(async (entry) => {
+          const game = await storage.getGame(entry.gameId);
+          return { ...entry, game };
+        })
+      );
+
+      res.json(gamesWithDetails);
+    } catch (error) {
+      console.error("Error fetching library:", error);
+      res.status(500).json({ message: "Failed to fetch library" });
+    }
+  });
+
+  app.post("/api/library", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { gameId } = req.body;
+      if (!gameId) {
+        return res.status(400).json({ message: "Game ID is required" });
+      }
+
+      const game = await storage.getGame(gameId);
+      if (!game) {
+        return res.status(404).json({ message: "Game not found" });
+      }
+
+      const inLibrary = await storage.isInLibrary(req.session.userId, gameId);
+      if (inLibrary) {
+        return res.status(400).json({ message: "Game already in library" });
+      }
+
+      const libraryEntry = await storage.addToLibrary({
+        userId: req.session.userId,
+        gameId,
+      });
+
+      res.json(libraryEntry);
+    } catch (error) {
+      console.error("Error adding to library:", error);
+      res.status(500).json({ message: "Failed to add to library" });
+    }
+  });
+
+  app.delete("/api/library/:gameId", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      await storage.removeFromLibrary(req.session.userId, req.params.gameId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing from library:", error);
+      res.status(500).json({ message: "Failed to remove from library" });
+    }
+  });
+
+  app.get("/api/library/check/:gameId", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const inLibrary = await storage.isInLibrary(req.session.userId, req.params.gameId);
+      res.json({ inLibrary });
+    } catch (error) {
+      console.error("Error checking library:", error);
+      res.status(500).json({ message: "Failed to check library" });
+    }
+  });
+
   // Admin middleware
   const requireAdmin = async (req: any, res: any, next: any) => {
     if (!req.session.userId) {

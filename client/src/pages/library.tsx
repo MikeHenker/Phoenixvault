@@ -19,10 +19,21 @@ export default function Library() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
+  const [viewMode, setViewMode] = useState<"my-library" | "all-games">("my-library");
 
-  const { data: games, isLoading } = useQuery<Game[]>({
+  const { data: allGames, isLoading: allGamesLoading } = useQuery<Game[]>({
     queryKey: ["/api/games"],
   });
+
+  const { data: myLibrary, isLoading: myLibraryLoading } = useQuery<any[]>({
+    queryKey: ["/api/library"],
+  });
+
+  const isLoading = viewMode === "my-library" ? myLibraryLoading : allGamesLoading;
+  
+  const games = viewMode === "my-library" 
+    ? myLibrary?.map(entry => entry.game).filter(Boolean) 
+    : allGames;
 
   const filteredGames =
     games
@@ -50,16 +61,38 @@ export default function Library() {
       <div className="max-w-7xl mx-auto px-6 py-12">
         {/* Header */}
         <div className="mb-8">
-          <h1
-            className="text-4xl font-bold mb-2"
-            style={{ fontFamily: "Montserrat, sans-serif" }}
-            data-testid="text-library-title"
-          >
-            Game Library
-          </h1>
-          <p className="text-muted-foreground" data-testid="text-library-subtitle">
-            Browse and download all available games
-          </p>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1
+                className="text-4xl font-bold mb-2"
+                style={{ fontFamily: "Montserrat, sans-serif" }}
+                data-testid="text-library-title"
+              >
+                Game Library
+              </h1>
+              <p className="text-muted-foreground" data-testid="text-library-subtitle">
+                {viewMode === "my-library" 
+                  ? "Your personal game collection"
+                  : "Browse and download all available games"}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant={viewMode === "my-library" ? "default" : "outline"}
+                onClick={() => setViewMode("my-library")}
+                data-testid="button-my-library"
+              >
+                My Library
+              </Button>
+              <Button
+                variant={viewMode === "all-games" ? "default" : "outline"}
+                onClick={() => setViewMode("all-games")}
+                data-testid="button-all-games"
+              >
+                All Games
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* Filters */}

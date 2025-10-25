@@ -3,7 +3,7 @@ import { useRoute, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Download, ArrowLeft, Calendar } from "lucide-react";
+import { Download, ArrowLeft, Calendar, Plus, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Game } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -21,6 +21,32 @@ export default function GameDetail() {
 
   const { data: session } = useQuery<{ user: any }>({
     queryKey: ["/api/session"],
+  });
+
+  const { data: libraryCheck } = useQuery<{ inLibrary: boolean }>({
+    queryKey: ["/api/library/check", params?.id],
+    enabled: !!params?.id && !!session?.user,
+  });
+
+  const addToLibraryMutation = useMutation({
+    mutationFn: async (gameId: string) => {
+      return await apiRequest("POST", "/api/library", { gameId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/library/check", params?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/library"] });
+      toast({
+        title: "Added to library!",
+        description: "Game has been added to your library",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to add to library",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   const downloadMutation = useMutation({
@@ -159,16 +185,42 @@ export default function GameDetail() {
                 <Card className="p-6 sticky top-6">
                   <div className="space-y-4">
                     {session?.user ? (
-                      <Button
-                        size="lg"
-                        className="w-full"
-                        onClick={() => downloadMutation.mutate(game.id)}
-                        disabled={downloadMutation.isPending}
-                        data-testid="button-download-game"
-                      >
-                        <Download className="w-5 h-5 mr-2" />
-                        {downloadMutation.isPending ? "Preparing..." : "Download Now"}
-                      </Button>
+                      <>
+                        {libraryCheck?.inLibrary ? (
+                          <Button
+                            size="lg"
+                            className="w-full"
+                            variant="outline"
+                            disabled
+                            data-testid="button-in-library"
+                          >
+                            <Check className="w-5 h-5 mr-2" />
+                            In Library
+                          </Button>
+                        ) : (
+                          <Button
+                            size="lg"
+                            className="w-full"
+                            variant="outline"
+                            onClick={() => addToLibraryMutation.mutate(game.id)}
+                            disabled={addToLibraryMutation.isPending}
+                            data-testid="button-add-to-library"
+                          >
+                            <Plus className="w-5 h-5 mr-2" />
+                            {addToLibraryMutation.isPending ? "Adding..." : "Add to Library"}
+                          </Button>
+                        )}
+                        <Button
+                          size="lg"
+                          className="w-full"
+                          onClick={() => downloadMutation.mutate(game.id)}
+                          disabled={downloadMutation.isPending}
+                          data-testid="button-download-game"
+                        >
+                          <Download className="w-5 h-5 mr-2" />
+                          {downloadMutation.isPending ? "Preparing..." : "Download Now"}
+                        </Button>
+                      </>
                     ) : (
                       <Button
                         size="lg"

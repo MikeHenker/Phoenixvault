@@ -3,6 +3,7 @@ import {
   licenses,
   games,
   downloads,
+  userLibrary,
   type User,
   type InsertUser,
   type License,
@@ -11,6 +12,8 @@ import {
   type InsertGame,
   type Download,
   type InsertDownload,
+  type UserLibrary,
+  type InsertUserLibrary,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql } from "drizzle-orm";
@@ -41,6 +44,12 @@ export interface IStorage {
   createDownload(download: InsertDownload): Promise<Download>;
   getDownloadsByUser(userId: string): Promise<Download[]>;
   getTotalDownloads(): Promise<number>;
+
+  // User Library
+  addToLibrary(data: InsertUserLibrary): Promise<UserLibrary>;
+  removeFromLibrary(userId: string, gameId: string): Promise<void>;
+  getUserLibrary(userId: string): Promise<UserLibrary[]>;
+  isInLibrary(userId: string, gameId: string): Promise<boolean>;
 
   // Stats
   getStats(): Promise<{
@@ -155,6 +164,30 @@ export class DatabaseStorage implements IStorage {
   async getTotalDownloads(): Promise<number> {
     const result = await db.select({ count: sql<number>`count(*)` }).from(downloads);
     return Number(result[0].count);
+  }
+
+  // User Library
+  async addToLibrary(data: InsertUserLibrary): Promise<UserLibrary> {
+    const [library] = await db.insert(userLibrary).values(data).returning();
+    return library;
+  }
+
+  async removeFromLibrary(userId: string, gameId: string): Promise<void> {
+    await db
+      .delete(userLibrary)
+      .where(sql`${userLibrary.userId} = ${userId} AND ${userLibrary.gameId} = ${gameId}`);
+  }
+
+  async getUserLibrary(userId: string): Promise<UserLibrary[]> {
+    return await db.select().from(userLibrary).where(eq(userLibrary.userId, userId));
+  }
+
+  async isInLibrary(userId: string, gameId: string): Promise<boolean> {
+    const [result] = await db
+      .select()
+      .from(userLibrary)
+      .where(sql`${userLibrary.userId} = ${userId} AND ${userLibrary.gameId} = ${gameId}`);
+    return !!result;
   }
 
   // Stats
