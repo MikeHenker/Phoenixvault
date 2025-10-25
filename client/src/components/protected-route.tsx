@@ -1,37 +1,26 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
+import type { User } from "@shared/schema";
 
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-  requireAdmin?: boolean;
-}
-
-export default function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
+export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [, setLocation] = useLocation();
-  const { data: session, isLoading } = useQuery<{ user: any }>({
+  const { data: session, isLoading } = useQuery<{ user: User | null }>({
     queryKey: ["/api/session"],
   });
 
   useEffect(() => {
-    if (!isLoading) {
-      if (!session?.user) {
-        setLocation("/auth/login");
-      } else if (requireAdmin && !session.user.isAdmin) {
-        setLocation("/");
-      }
+    if (!isLoading && !session?.user) {
+      setLocation("/auth/register");
     }
-  }, [session, isLoading, requireAdmin, setLocation]);
+  }, [session, isLoading, setLocation]);
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
-      </div>
-    );
+    return null;
   }
 
-  if (!session?.user || (requireAdmin && !session.user.isAdmin)) {
+  // Redirect unauthenticated users to registration
+  if (!session?.user) {
     return null;
   }
 

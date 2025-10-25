@@ -11,26 +11,27 @@ import heroImage from "@assets/generated_images/Epic_gaming_hero_banner_836d68df
 export default function Home() {
   const [, setLocation] = useLocation();
 
-  const { data: session } = useQuery<{ user: User | null }>({
+  const { data: session, isLoading } = useQuery<{ user: User | null }>({
     queryKey: ["/api/session"],
   });
 
   const { data: games } = useQuery<Game[]>({
     queryKey: ["/api/games"],
+    enabled: !!session?.user,
   });
 
   // Redirect to registration if not logged in
   useEffect(() => {
-    if (session && !session.user) {
+    if (!isLoading && session && !session.user) {
       setLocation("/auth/register");
     }
-  }, [session, setLocation]);
+  }, [session, isLoading, setLocation]);
 
   const featuredGames = games?.filter((game) => game.featured).slice(0, 1) || [];
   const recentGames = games?.slice(0, 8) || [];
 
-  // Don't render content if redirecting
-  if (!session?.user) {
+  // Show loading or redirect - don't render content if not authenticated
+  if (isLoading || !session?.user) {
     return null;
   }
 

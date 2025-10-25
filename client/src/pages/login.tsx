@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Gamepad2, Lock, User } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import type { User as UserType } from "@shared/schema";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -15,6 +16,17 @@ export default function Login() {
   const queryClient = useQueryClient();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+
+  const { data: session } = useQuery<{ user: UserType | null }>({
+    queryKey: ["/api/session"],
+  });
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (session?.user) {
+      setLocation("/");
+    }
+  }, [session, setLocation]);
 
   const loginMutation = useMutation({
     mutationFn: async (data: { username: string; password: string }) => {
