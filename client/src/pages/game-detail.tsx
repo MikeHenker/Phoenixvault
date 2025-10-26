@@ -88,20 +88,41 @@ export default function GameDetail() {
     mutationFn: async ({ gameId, hasLocalFiles, exePath }: { gameId: string; hasLocalFiles?: boolean; exePath?: string }) => {
       return await apiRequest("PATCH", `/api/library/${gameId}`, { hasLocalFiles, exePath });
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["/api/library/entry", params?.id] });
-      await queryClient.invalidateQueries({ queryKey: ["/api/library"] });
-      await refetchLibraryEntry();
-      toast({
-        title: "Library updated!",
-        description: "Your settings have been saved",
-      });
+    onMutate: async ({ hasLocalFiles, exePath }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["/api/library/entry", params?.id] });
+      
+      // Snapshot the previous value
+      const previousEntry = queryClient.getQueryData(["/api/library/entry", params?.id]);
+      
+      // Optimistically update to the new value
+      if (previousEntry) {
+        queryClient.setQueryData(["/api/library/entry", params?.id], {
+          ...previousEntry,
+          hasLocalFiles: hasLocalFiles !== undefined ? hasLocalFiles : previousEntry.hasLocalFiles,
+          exePath: exePath !== undefined ? exePath : previousEntry.exePath,
+        });
+      }
+      
+      return { previousEntry };
     },
-    onError: (error: Error) => {
+    onError: (error: Error, variables, context) => {
+      // Rollback on error
+      if (context?.previousEntry) {
+        queryClient.setQueryData(["/api/library/entry", params?.id], context.previousEntry);
+      }
       toast({
         title: "Update failed",
         description: error.message,
         variant: "destructive",
+      });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/library/entry", params?.id] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/library"] });
+      toast({
+        title: "Library updated!",
+        description: "Your settings have been saved",
       });
     },
   });
