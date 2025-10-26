@@ -314,17 +314,33 @@ export default function GameDetail() {
                                   id="exePath"
                                   type="text"
                                   placeholder="C:\Games\game.exe"
-                                  defaultValue={libraryEntry?.exePath || ""}
-                                  onBlur={(e) => {
-                                    if (e.target.value !== libraryEntry?.exePath) {
-                                      updateLibraryMutation.mutate({
-                                        gameId: game.id,
-                                        exePath: e.target.value,
-                                      });
-                                    }
-                                  }}
+                                  value={libraryEntry?.exePath || ""}
+                                  readOnly
                                   data-testid="input-exe-path"
                                 />
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    const input = document.createElement('input');
+                                    input.type = 'file';
+                                    input.accept = '.exe';
+                                    input.onchange = (e) => {
+                                      const file = (e.target as HTMLInputElement).files?.[0];
+                                      if (file) {
+                                        const path = (file as any).path || file.name;
+                                        updateLibraryMutation.mutate({
+                                          gameId: game.id,
+                                          exePath: path,
+                                        });
+                                      }
+                                    };
+                                    input.click();
+                                  }}
+                                  data-testid="button-browse-exe"
+                                >
+                                  Browse
+                                </Button>
                               </div>
                               {libraryEntry?.exePath && (
                                 <Button
