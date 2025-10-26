@@ -68,10 +68,10 @@ export default function Register() {
             style={{ fontFamily: "Montserrat, sans-serif" }}
             data-testid="text-register-title"
           >
-            Join GameVault
+            Join Phoenix Games
           </h1>
           <p className="text-muted-foreground" data-testid="text-register-subtitle">
-            Create your account with a valid beta license key
+            Create your account with a valid license key
           </p>
         </div>
 
@@ -79,7 +79,7 @@ export default function Register() {
           <CardHeader>
             <CardTitle data-testid="text-create-account-title">Create Account</CardTitle>
             <CardDescription data-testid="text-create-account-description">
-              You need a valid license key to join the beta
+              You need a valid license key to register
             </CardDescription>
           </CardHeader>
           <CardContent>

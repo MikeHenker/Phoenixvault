@@ -55,7 +55,7 @@ export default function AdminDashboard() {
           Admin Dashboard
         </h1>
         <p className="text-muted-foreground" data-testid="text-admin-dashboard-subtitle">
-          Overview of your game distribution platform
+          Overview of Phoenix Games platform
         </p>
       </div>
 

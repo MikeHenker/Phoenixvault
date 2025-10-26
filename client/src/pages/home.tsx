@@ -56,7 +56,7 @@ export default function Home() {
               data-testid="badge-beta"
             >
               <Star className="w-3 h-3 mr-1" />
-              Beta Access
+              Premium Access
             </Badge>
             <h1
               className="text-6xl font-bold tracking-tight"
@@ -67,7 +67,7 @@ export default function Home() {
             </h1>
             <p className="text-lg text-muted-foreground max-w-xl" data-testid="text-hero-description">
               {featuredGames[0]?.description ||
-                "Experience exclusive beta access to the most anticipated games. Join the elite community of early adopters."}
+                "Experience premium access to the most anticipated games. Join Phoenix Games today."}
             </p>
             <div className="flex gap-4 pt-4">
               {session?.user ? (
@@ -99,7 +99,7 @@ export default function Home() {
                       className="px-8 text-base font-semibold backdrop-blur-md bg-background/20"
                       data-testid="button-join-beta"
                     >
-                      Join Beta
+                      Join Now
                     </Button>
                   </Link>
                 </>

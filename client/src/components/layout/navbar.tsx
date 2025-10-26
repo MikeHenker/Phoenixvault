@@ -52,7 +52,7 @@ export default function Navbar() {
                 className="text-xl font-bold"
                 style={{ fontFamily: "Montserrat, sans-serif" }}
               >
-                GameVault
+                Phoenix Games
               </span>
             </div>
           </Link>
@@ -125,7 +125,7 @@ export default function Navbar() {
                   </Button>
                 </Link>
                 <Link href="/auth/register">
-                  <Button data-testid="button-nav-register">Join Beta</Button>
+                  <Button data-testid="button-nav-register">Register</Button>
                 </Link>
               </div>
             )}

@@ -50,7 +50,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                       className="text-lg font-bold"
                       style={{ fontFamily: "Montserrat, sans-serif" }}
                     >
-                      GameVault
+                      Phoenix Games
                     </p>
                     <p className="text-xs text-muted-foreground">Admin Panel</p>
                   </div>
