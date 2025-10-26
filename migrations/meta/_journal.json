@@ -1,3 +1,4 @@
+
 {
   "version": "7",
   "dialect": "postgresql",
@@ -6,7 +7,7 @@
       "idx": 0,
       "version": "7",
       "when": 1761438897677,
-      "tag": "0000_living_william_stryker",
+      "tag": "0001_add_library_columns",
       "breakpoints": true
     }
   ]
