@@ -17,6 +17,7 @@ import AdminDashboard from "@/pages/admin/dashboard";
 import AdminGames from "@/pages/admin/games";
 import AdminLicenses from "@/pages/admin/licenses";
 import AdminUsers from "@/pages/admin/users";
+import Launcher from "@/pages/launcher";
 
 function Router() {
   const [location] = useLocation();
@@ -36,6 +37,11 @@ function Router() {
         <Route path="/library">
           <ProtectedRoute>
             <Library />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/launcher">
+          <ProtectedRoute>
+            <Launcher />
           </ProtectedRoute>
         </Route>
         <Route path="/game/:id">

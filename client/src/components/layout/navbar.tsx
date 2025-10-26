@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Gamepad2, Library, Home, LogOut, User, Shield } from "lucide-react";
+import { Gamepad2, Library, Home, LogOut, User, Shield, Download } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -36,6 +36,7 @@ export default function Navbar() {
   const navLinks = [
     { href: "/", label: "Home", icon: Home, testId: "link-home" },
     { href: "/library", label: "Library", icon: Library, testId: "link-library" },
+    { href: "/launcher", label: "Launcher", icon: Download, testId: "link-launcher" },
   ];
 
   return (
