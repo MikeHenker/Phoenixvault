@@ -641,6 +641,371 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Friends/Follow System
+  app.get("/api/users/:userId/followers", async (req, res) => {
+    try {
+      const followers = await storage.getFollowers(req.params.userId);
+      res.json(followers);
+    } catch (error) {
+      console.error("Error fetching followers:", error);
+      res.status(500).json({ message: "Failed to fetch followers" });
+    }
+  });
+
+  app.get("/api/users/:userId/following", async (req, res) => {
+    try {
+      const following = await storage.getFollowing(req.params.userId);
+      res.json(following);
+    } catch (error) {
+      console.error("Error fetching following:", error);
+      res.status(500).json({ message: "Failed to fetch following" });
+    }
+  });
+
+  app.post("/api/users/:userId/follow", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      if (req.session.userId === req.params.userId) {
+        return res.status(400).json({ message: "Cannot follow yourself" });
+      }
+
+      const follow = await storage.followUser(req.session.userId, req.params.userId);
+      
+      // Create activity
+      await storage.createActivity({
+        userId: req.session.userId,
+        type: "follow",
+        targetUserId: req.params.userId,
+        gameId: null,
+        metadata: null,
+      });
+
+      res.json(follow);
+    } catch (error) {
+      console.error("Error following user:", error);
+      res.status(500).json({ message: "Failed to follow user" });
+    }
+  });
+
+  app.delete("/api/users/:userId/follow", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      await storage.unfollowUser(req.session.userId, req.params.userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error unfollowing user:", error);
+      res.status(500).json({ message: "Failed to unfollow user" });
+    }
+  });
+
+  app.get("/api/users/:userId/follow-status", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.json({ isFollowing: false });
+      }
+
+      const isFollowing = await storage.isFollowing(req.session.userId, req.params.userId);
+      res.json({ isFollowing });
+    } catch (error) {
+      console.error("Error checking follow status:", error);
+      res.status(500).json({ message: "Failed to check follow status" });
+    }
+  });
+
+  // User Profiles
+  app.get("/api/users/:userId/profile", async (req, res) => {
+    try {
+      const user = await storage.getUser(req.params.userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { password, ...userWithoutPassword } = user;
+      const stats = await storage.getUserStats(req.params.userId);
+      
+      res.json({ user: userWithoutPassword, stats });
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      res.status(500).json({ message: "Failed to fetch user profile" });
+    }
+  });
+
+  app.put("/api/profile", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { avatarUrl, bio, location } = req.body;
+      const updatedUser = await storage.updateUserProfile(req.session.userId, {
+        avatarUrl,
+        bio,
+        location,
+      });
+
+      const { password, ...userWithoutPassword } = updatedUser;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // Achievements
+  app.get("/api/games/:gameId/achievements", async (req, res) => {
+    try {
+      const achievements = await storage.getGameAchievements(req.params.gameId);
+      res.json(achievements);
+    } catch (error) {
+      console.error("Error fetching achievements:", error);
+      res.status(500).json({ message: "Failed to fetch achievements" });
+    }
+  });
+
+  app.get("/api/users/:userId/achievements", async (req, res) => {
+    try {
+      const achievements = await storage.getUserAchievements(req.params.userId);
+      res.json(achievements);
+    } catch (error) {
+      console.error("Error fetching user achievements:", error);
+      res.status(500).json({ message: "Failed to fetch user achievements" });
+    }
+  });
+
+  app.post("/api/achievements/:achievementId/unlock", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const unlocked = await storage.unlockAchievement(req.session.userId, req.params.achievementId);
+      
+      // Create activity
+      const achievement = await storage.getAchievement(req.params.achievementId);
+      await storage.createActivity({
+        userId: req.session.userId,
+        type: "achievement",
+        gameId: achievement.gameId,
+        targetUserId: null,
+        metadata: JSON.stringify({ achievementId: req.params.achievementId }),
+      });
+
+      res.json(unlocked);
+    } catch (error) {
+      console.error("Error unlocking achievement:", error);
+      res.status(500).json({ message: "Failed to unlock achievement" });
+    }
+  });
+
+  // Playtime Tracking
+  app.get("/api/users/:userId/playtime", async (req, res) => {
+    try {
+      const playtime = await storage.getUserPlaytime(req.params.userId);
+      res.json(playtime);
+    } catch (error) {
+      console.error("Error fetching playtime:", error);
+      res.status(500).json({ message: "Failed to fetch playtime" });
+    }
+  });
+
+  app.post("/api/playtime/:gameId", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { minutes } = req.body;
+      const playtime = await storage.updatePlaytime(req.session.userId, req.params.gameId, minutes);
+      res.json(playtime);
+    } catch (error) {
+      console.error("Error updating playtime:", error);
+      res.status(500).json({ message: "Failed to update playtime" });
+    }
+  });
+
+  // Comments
+  app.get("/api/games/:gameId/comments", async (req, res) => {
+    try {
+      const comments = await storage.getGameComments(req.params.gameId);
+      res.json(comments);
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+      res.status(500).json({ message: "Failed to fetch comments" });
+    }
+  });
+
+  app.post("/api/games/:gameId/comments", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { content, parentId } = req.body;
+      const comment = await storage.createComment({
+        userId: req.session.userId,
+        gameId: req.params.gameId,
+        content,
+        parentId: parentId || null,
+      });
+
+      // Create activity
+      await storage.createActivity({
+        userId: req.session.userId,
+        type: "comment",
+        gameId: req.params.gameId,
+        targetUserId: null,
+        metadata: null,
+      });
+
+      res.json(comment);
+    } catch (error) {
+      console.error("Error creating comment:", error);
+      res.status(500).json({ message: "Failed to create comment" });
+    }
+  });
+
+  app.put("/api/comments/:commentId", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { content } = req.body;
+      const comment = await storage.updateComment(req.params.commentId, req.session.userId, content);
+      res.json(comment);
+    } catch (error) {
+      console.error("Error updating comment:", error);
+      res.status(500).json({ message: "Failed to update comment" });
+    }
+  });
+
+  app.delete("/api/comments/:commentId", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      await storage.deleteComment(req.params.commentId, req.session.userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      res.status(500).json({ message: "Failed to delete comment" });
+    }
+  });
+
+  // Screenshots
+  app.get("/api/games/:gameId/screenshots", async (req, res) => {
+    try {
+      const screenshots = await storage.getGameScreenshots(req.params.gameId);
+      res.json(screenshots);
+    } catch (error) {
+      console.error("Error fetching screenshots:", error);
+      res.status(500).json({ message: "Failed to fetch screenshots" });
+    }
+  });
+
+  app.post("/api/games/:gameId/screenshots", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { imageUrl, caption } = req.body;
+      const screenshot = await storage.createScreenshot({
+        gameId: req.params.gameId,
+        userId: req.session.userId,
+        imageUrl,
+        caption: caption || null,
+      });
+
+      res.json(screenshot);
+    } catch (error) {
+      console.error("Error creating screenshot:", error);
+      res.status(500).json({ message: "Failed to create screenshot" });
+    }
+  });
+
+  app.delete("/api/screenshots/:screenshotId", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      await storage.deleteScreenshot(req.params.screenshotId, req.session.userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting screenshot:", error);
+      res.status(500).json({ message: "Failed to delete screenshot" });
+    }
+  });
+
+  // Activity Feed
+  app.get("/api/activity/feed", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const activities = await storage.getActivityFeed(req.session.userId);
+      res.json(activities);
+    } catch (error) {
+      console.error("Error fetching activity feed:", error);
+      res.status(500).json({ message: "Failed to fetch activity feed" });
+    }
+  });
+
+  app.get("/api/users/:userId/activity", async (req, res) => {
+    try {
+      const activities = await storage.getUserActivity(req.params.userId);
+      res.json(activities);
+    } catch (error) {
+      console.error("Error fetching user activity:", error);
+      res.status(500).json({ message: "Failed to fetch user activity" });
+    }
+  });
+
+  // Trending and Popular Games
+  app.get("/api/games/trending", async (req, res) => {
+    try {
+      const trending = await storage.getTrendingGames();
+      res.json(trending);
+    } catch (error) {
+      console.error("Error fetching trending games:", error);
+      res.status(500).json({ message: "Failed to fetch trending games" });
+    }
+  });
+
+  app.get("/api/games/popular", async (req, res) => {
+    try {
+      const popular = await storage.getPopularGames();
+      res.json(popular);
+    } catch (error) {
+      console.error("Error fetching popular games:", error);
+      res.status(500).json({ message: "Failed to fetch popular games" });
+    }
+  });
+
+  // Game Recommendations
+  app.get("/api/recommendations", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const recommendations = await storage.getRecommendations(req.session.userId);
+      res.json(recommendations);
+    } catch (error) {
+      console.error("Error fetching recommendations:", error);
+      res.status(500).json({ message: "Failed to fetch recommendations" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

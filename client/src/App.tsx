@@ -17,24 +17,18 @@ import AdminDashboard from "@/pages/admin/dashboard";
 import AdminGames from "@/pages/admin/games";
 import AdminLicenses from "@/pages/admin/licenses";
 import AdminUsers from "@/pages/admin/users";
-import Launcher from "@/pages/launcher";
 
 function Router() {
   const [location] = useLocation();
   const isAuthRoute = location.startsWith("/auth");
   const isAdminRoute = location.startsWith("/admin");
-  const isLauncherRoute = location === "/" && window.electronAPI;
 
   return (
     <>
-      {!isAuthRoute && !isAdminRoute && !isLauncherRoute && <Navbar />}
+      {!isAuthRoute && !isAdminRoute && <Navbar />}
       <Switch>
-        {/* Desktop Launcher - Only shown in Electron */}
-        <Route path="/">
-          {window.electronAPI ? <Launcher /> : <Home />}
-        </Route>
-        
-        {/* Authentication Routes */}
+        {/* Public Routes */}
+        <Route path="/" component={Home} />
         <Route path="/auth/login" component={Login} />
         <Route path="/auth/register" component={Register} />
 

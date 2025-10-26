@@ -155,6 +155,14 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   downloads: many(downloads),
   reviews: many(reviews),
   wishlist: many(wishlist),
+  library: many(userLibrary),
+  followers: many(follows, { relationName: "following" }),
+  following: many(follows, { relationName: "follower" }),
+  achievements: many(userAchievements),
+  playtime: many(playtime),
+  comments: many(comments),
+  screenshots: many(screenshots),
+  activities: many(activities),
   license: one(licenses, {
     fields: [users.licenseKey],
     references: [licenses.key],
@@ -172,6 +180,11 @@ export const gamesRelations = relations(games, ({ many }) => ({
   downloads: many(downloads),
   reviews: many(reviews),
   wishlist: many(wishlist),
+  library: many(userLibrary),
+  achievements: many(achievements),
+  playtime: many(playtime),
+  comments: many(comments),
+  screenshots: many(screenshots),
 }));
 
 export const downloadsRelations = relations(downloads, ({ one }) => ({
@@ -218,6 +231,91 @@ export const wishlistRelations = relations(wishlist, ({ one }) => ({
   }),
 }));
 
+export const followsRelations = relations(follows, ({ one }) => ({
+  follower: one(users, {
+    relationName: "follower",
+    fields: [follows.followerId],
+    references: [users.id],
+  }),
+  following: one(users, {
+    relationName: "following",
+    fields: [follows.followingId],
+    references: [users.id],
+  }),
+}));
+
+export const achievementsRelations = relations(achievements, ({ one, many }) => ({
+  game: one(games, {
+    fields: [achievements.gameId],
+    references: [games.id],
+  }),
+  userAchievements: many(userAchievements),
+}));
+
+export const userAchievementsRelations = relations(userAchievements, ({ one }) => ({
+  user: one(users, {
+    fields: [userAchievements.userId],
+    references: [users.id],
+  }),
+  achievement: one(achievements, {
+    fields: [userAchievements.achievementId],
+    references: [achievements.id],
+  }),
+}));
+
+export const playtimeRelations = relations(playtime, ({ one }) => ({
+  user: one(users, {
+    fields: [playtime.userId],
+    references: [users.id],
+  }),
+  game: one(games, {
+    fields: [playtime.gameId],
+    references: [games.id],
+  }),
+}));
+
+export const commentsRelations = relations(comments, ({ one, many }) => ({
+  user: one(users, {
+    fields: [comments.userId],
+    references: [users.id],
+  }),
+  game: one(games, {
+    fields: [comments.gameId],
+    references: [games.id],
+  }),
+  parent: one(comments, {
+    fields: [comments.parentId],
+    references: [comments.id],
+  }),
+  replies: many(comments),
+}));
+
+export const screenshotsRelations = relations(screenshots, ({ one }) => ({
+  game: one(games, {
+    fields: [screenshots.gameId],
+    references: [games.id],
+  }),
+  user: one(users, {
+    fields: [screenshots.userId],
+    references: [users.id],
+  }),
+}));
+
+export const activitiesRelations = relations(activities, ({ one }) => ({
+  user: one(users, {
+    fields: [activities.userId],
+    references: [users.id],
+  }),
+  game: one(games, {
+    fields: [activities.gameId],
+    references: [games.id],
+  }),
+  targetUser: one(users, {
+    fields: [activities.targetUserId],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -257,6 +355,42 @@ export const insertWishlistSchema = createInsertSchema(wishlist).omit({
   addedAt: true,
 });
 
+export const insertFollowSchema = createInsertSchema(follows).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAchievementSchema = createInsertSchema(achievements).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserAchievementSchema = createInsertSchema(userAchievements).omit({
+  id: true,
+  unlockedAt: true,
+});
+
+export const insertPlaytimeSchema = createInsertSchema(playtime).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export const insertCommentSchema = createInsertSchema(comments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertScreenshotSchema = createInsertSchema(screenshots).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertActivitySchema = createInsertSchema(activities).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -278,3 +412,24 @@ export type InsertReview = z.infer<typeof insertReviewSchema>;
 
 export type Wishlist = typeof wishlist.$inferSelect;
 export type InsertWishlist = z.infer<typeof insertWishlistSchema>;
+
+export type Follow = typeof follows.$inferSelect;
+export type InsertFollow = z.infer<typeof insertFollowSchema>;
+
+export type Achievement = typeof achievements.$inferSelect;
+export type InsertAchievement = z.infer<typeof insertAchievementSchema>;
+
+export type UserAchievement = typeof userAchievements.$inferSelect;
+export type InsertUserAchievement = z.infer<typeof insertUserAchievementSchema>;
+
+export type Playtime = typeof playtime.$inferSelect;
+export type InsertPlaytime = z.infer<typeof insertPlaytimeSchema>;
+
+export type Comment = typeof comments.$inferSelect;
+export type InsertComment = z.infer<typeof insertCommentSchema>;
+
+export type Screenshot = typeof screenshots.$inferSelect;
+export type InsertScreenshot = z.infer<typeof insertScreenshotSchema>;
+
+export type Activity = typeof activities.$inferSelect;
+export type InsertActivity = z.infer<typeof insertActivitySchema>;
