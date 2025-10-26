@@ -31,10 +31,11 @@ export default function GameDetail() {
     enabled: !!params?.id && !!session?.user,
   });
 
-  const { data: libraryEntry, refetch: refetchLibraryEntry } = useQuery<any>({
+  const { data: libraryEntry } = useQuery<any>({
     queryKey: ["/api/library/entry", params?.id],
     queryFn: async () => {
-      const library = await apiRequest("GET", "/api/library");
+      const response = await apiRequest("GET", "/api/library");
+      const library = await response.json();
       return library.find((entry: any) => entry.gameId === params?.id);
     },
     enabled: !!params?.id && !!session?.user && libraryCheck?.inLibrary,
@@ -86,36 +87,8 @@ export default function GameDetail() {
 
   const updateLibraryMutation = useMutation({
     mutationFn: async ({ gameId, hasLocalFiles, exePath }: { gameId: string; hasLocalFiles?: boolean; exePath?: string }) => {
-      return await apiRequest("PATCH", `/api/library/${gameId}`, { hasLocalFiles, exePath });
-    },
-    onMutate: async ({ hasLocalFiles, exePath }) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ["/api/library/entry", params?.id] });
-      
-      // Snapshot the previous value
-      const previousEntry = queryClient.getQueryData(["/api/library/entry", params?.id]);
-      
-      // Optimistically update to the new value
-      if (previousEntry) {
-        queryClient.setQueryData(["/api/library/entry", params?.id], {
-          ...previousEntry,
-          hasLocalFiles: hasLocalFiles !== undefined ? hasLocalFiles : previousEntry.hasLocalFiles,
-          exePath: exePath !== undefined ? exePath : previousEntry.exePath,
-        });
-      }
-      
-      return { previousEntry };
-    },
-    onError: (error: Error, variables, context) => {
-      // Rollback on error
-      if (context?.previousEntry) {
-        queryClient.setQueryData(["/api/library/entry", params?.id], context.previousEntry);
-      }
-      toast({
-        title: "Update failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      const response = await apiRequest("PATCH", `/api/library/${gameId}`, { hasLocalFiles, exePath });
+      return await response.json();
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["/api/library/entry", params?.id] });
@@ -123,6 +96,13 @@ export default function GameDetail() {
       toast({
         title: "Library updated!",
         description: "Your settings have been saved",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive",
       });
     },
   });
