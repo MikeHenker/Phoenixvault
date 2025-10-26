@@ -164,20 +164,10 @@ export default function Launcher() {
                 <div className="space-y-3">
                   <h3 className="font-semibold flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">2</span>
-                    Extract
+                    Extract & Run
                   </h3>
                   <p className="text-muted-foreground ml-8">
-                    Extract the ZIP file to your preferred location
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <h3 className="font-semibold flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm">3</span>
-                    Run
-                  </h3>
-                  <p className="text-muted-foreground ml-8">
-                    Run <code className="bg-muted px-2 py-1 rounded">GameLibrary.exe</code>
+                    Extract the ZIP file and run <code className="bg-muted px-2 py-1 rounded">GameLibrary.exe</code>
                   </p>
                 </div>
 
