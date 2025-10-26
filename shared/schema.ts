@@ -12,6 +12,9 @@ export const users = pgTable("users", {
   isAdmin: boolean("is_admin").notNull().default(false),
   isApproved: boolean("is_approved").notNull().default(false),
   licenseKey: text("license_key"),
+  avatarUrl: text("avatar_url"),
+  bio: text("bio"),
+  location: text("location"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -76,6 +79,75 @@ export const wishlist = pgTable("wishlist", {
   userId: varchar("user_id").notNull().references(() => users.id),
   gameId: varchar("game_id").notNull().references(() => games.id),
   addedAt: timestamp("added_at").notNull().defaultNow(),
+});
+
+// Friends/Following system
+export const follows = pgTable("follows", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  followerId: varchar("follower_id").notNull().references(() => users.id),
+  followingId: varchar("following_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Achievements table
+export const achievements = pgTable("achievements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  gameId: varchar("game_id").notNull().references(() => games.id),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  iconUrl: text("icon_url"),
+  points: integer("points").notNull().default(10),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// User achievements (unlocked)
+export const userAchievements = pgTable("user_achievements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  achievementId: varchar("achievement_id").notNull().references(() => achievements.id),
+  unlockedAt: timestamp("unlocked_at").notNull().defaultNow(),
+});
+
+// Playtime tracking
+export const playtime = pgTable("playtime", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  gameId: varchar("game_id").notNull().references(() => games.id),
+  totalMinutes: integer("total_minutes").notNull().default(0),
+  lastPlayed: timestamp("last_played"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Comments on games
+export const comments = pgTable("comments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  gameId: varchar("game_id").notNull().references(() => games.id),
+  content: text("content").notNull(),
+  parentId: varchar("parent_id").references((): any => comments.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Game screenshots
+export const screenshots = pgTable("screenshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  gameId: varchar("game_id").notNull().references(() => games.id),
+  userId: varchar("user_id").references(() => users.id),
+  imageUrl: text("image_url").notNull(),
+  caption: text("caption"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Activity feed
+export const activities = pgTable("activities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  type: text("type").notNull(), // 'download', 'review', 'achievement', 'friend', etc
+  gameId: varchar("game_id").references(() => games.id),
+  targetUserId: varchar("target_user_id").references(() => users.id),
+  metadata: text("metadata"), // JSON string for additional data
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // Relations
