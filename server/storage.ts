@@ -4,6 +4,8 @@ import {
   games,
   downloads,
   userLibrary,
+  reviews,
+  wishlist,
   type User,
   type InsertUser,
   type License,
@@ -14,6 +16,10 @@ import {
   type InsertDownload,
   type UserLibrary,
   type InsertUserLibrary,
+  type Review,
+  type InsertReview,
+  type Wishlist,
+  type InsertWishlist,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql } from "drizzle-orm";
@@ -51,6 +57,24 @@ export interface IStorage {
   getUserLibrary(userId: string): Promise<UserLibrary[]>;
   isInLibrary(userId: string, gameId: string): Promise<boolean>;
 
+  // Reviews and Ratings
+  createReview(review: InsertReview): Promise<Review>;
+  updateReview(id: string, data: Partial<InsertReview>): Promise<Review>;
+  deleteReview(id: string): Promise<void>;
+  getGameReviews(gameId: string): Promise<Review[]>;
+  getUserReview(userId: string, gameId: string): Promise<Review | undefined>;
+  updateGameRating(gameId: string): Promise<void>;
+
+  // Wishlist
+  addToWishlist(data: InsertWishlist): Promise<Wishlist>;
+  removeFromWishlist(userId: string, gameId: string): Promise<void>;
+  getUserWishlist(userId: string): Promise<Wishlist[]>;
+  isInWishlist(userId: string, gameId: string): Promise<boolean>;
+
+  // Bulk operations
+  bulkDeleteGames(gameIds: string[]): Promise<void>;
+  bulkToggleGameActive(gameIds: string[], isActive: boolean): Promise<void>;
+
   // Stats
   getStats(): Promise<{
     totalUsers: number;
@@ -59,6 +83,7 @@ export interface IStorage {
     totalGames: number;
     totalDownloads: number;
   }>;
+  getDownloadStats(): Promise<Array<{ gameId: string; gameTitle: string; downloads: number }>>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -190,6 +215,105 @@ export class DatabaseStorage implements IStorage {
     return !!result;
   }
 
+  // Reviews and Ratings
+  async createReview(insertReview: InsertReview): Promise<Review> {
+    const [review] = await db.insert(reviews).values(insertReview).returning();
+    await this.updateGameRating(insertReview.gameId);
+    return review;
+  }
+
+  async updateReview(id: string, data: Partial<InsertReview>): Promise<Review> {
+    const [review] = await db
+      .update(reviews)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(reviews.id, id))
+      .returning();
+    if (review) {
+      await this.updateGameRating(review.gameId);
+    }
+    return review;
+  }
+
+  async deleteReview(id: string): Promise<void> {
+    const [review] = await db.select().from(reviews).where(eq(reviews.id, id));
+    if (review) {
+      await db.delete(reviews).where(eq(reviews.id, id));
+      await this.updateGameRating(review.gameId);
+    }
+  }
+
+  async getGameReviews(gameId: string): Promise<Review[]> {
+    return await db.select().from(reviews).where(eq(reviews.gameId, gameId)).orderBy(desc(reviews.createdAt));
+  }
+
+  async getUserReview(userId: string, gameId: string): Promise<Review | undefined> {
+    const [review] = await db
+      .select()
+      .from(reviews)
+      .where(sql`${reviews.userId} = ${userId} AND ${reviews.gameId} = ${gameId}`);
+    return review || undefined;
+  }
+
+  async updateGameRating(gameId: string): Promise<void> {
+    const gameReviews = await db.select().from(reviews).where(eq(reviews.gameId, gameId));
+    
+    if (gameReviews.length === 0) {
+      await db
+        .update(games)
+        .set({ averageRating: 0, totalRatings: 0 })
+        .where(eq(games.id, gameId));
+      return;
+    }
+
+    const totalRating = gameReviews.reduce((sum, review) => sum + review.rating, 0);
+    const averageRating = Math.round(totalRating / gameReviews.length);
+
+    await db
+      .update(games)
+      .set({
+        averageRating,
+        totalRatings: gameReviews.length,
+      })
+      .where(eq(games.id, gameId));
+  }
+
+  // Wishlist
+  async addToWishlist(data: InsertWishlist): Promise<Wishlist> {
+    const [item] = await db.insert(wishlist).values(data).returning();
+    return item;
+  }
+
+  async removeFromWishlist(userId: string, gameId: string): Promise<void> {
+    await db
+      .delete(wishlist)
+      .where(sql`${wishlist.userId} = ${userId} AND ${wishlist.gameId} = ${gameId}`);
+  }
+
+  async getUserWishlist(userId: string): Promise<Wishlist[]> {
+    return await db.select().from(wishlist).where(eq(wishlist.userId, userId));
+  }
+
+  async isInWishlist(userId: string, gameId: string): Promise<boolean> {
+    const [result] = await db
+      .select()
+      .from(wishlist)
+      .where(sql`${wishlist.userId} = ${userId} AND ${wishlist.gameId} = ${gameId}`);
+    return !!result;
+  }
+
+  // Bulk operations
+  async bulkDeleteGames(gameIds: string[]): Promise<void> {
+    for (const gameId of gameIds) {
+      await this.deleteGame(gameId);
+    }
+  }
+
+  async bulkToggleGameActive(gameIds: string[], isActive: boolean): Promise<void> {
+    for (const gameId of gameIds) {
+      await db.update(games).set({ isActive }).where(eq(games.id, gameId));
+    }
+  }
+
   // Stats
   async getStats(): Promise<{
     totalUsers: number;
@@ -214,6 +338,29 @@ export class DatabaseStorage implements IStorage {
       totalGames: Number(gameCount.count),
       totalDownloads: Number(downloadCount.count),
     };
+  }
+
+  async getDownloadStats(): Promise<Array<{ gameId: string; gameTitle: string; downloads: number }>> {
+    const result = await db
+      .select({
+        gameId: downloads.gameId,
+        count: sql<number>`count(*)`,
+      })
+      .from(downloads)
+      .groupBy(downloads.gameId);
+
+    const stats = await Promise.all(
+      result.map(async (item) => {
+        const game = await this.getGame(item.gameId);
+        return {
+          gameId: item.gameId,
+          gameTitle: game?.title || "Unknown",
+          downloads: Number(item.count),
+        };
+      })
+    );
+
+    return stats.sort((a, b) => b.downloads - a.downloads);
   }
 }
 

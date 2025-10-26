@@ -393,6 +393,235 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/admin/download-stats", requireAdmin, async (req, res) => {
+    try {
+      const stats = await storage.getDownloadStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching download stats:", error);
+      res.status(500).json({ message: "Failed to fetch download stats" });
+    }
+  });
+
+  // Admin Routes - Bulk Operations
+  app.post("/api/admin/games/bulk-delete", requireAdmin, async (req, res) => {
+    try {
+      const { gameIds } = req.body;
+      if (!Array.isArray(gameIds)) {
+        return res.status(400).json({ message: "gameIds must be an array" });
+      }
+      await storage.bulkDeleteGames(gameIds);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error bulk deleting games:", error);
+      res.status(500).json({ message: "Failed to bulk delete games" });
+    }
+  });
+
+  app.post("/api/admin/games/bulk-toggle", requireAdmin, async (req, res) => {
+    try {
+      const { gameIds, isActive } = req.body;
+      if (!Array.isArray(gameIds) || typeof isActive !== "boolean") {
+        return res.status(400).json({ message: "Invalid request body" });
+      }
+      await storage.bulkToggleGameActive(gameIds, isActive);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error bulk toggling games:", error);
+      res.status(500).json({ message: "Failed to bulk toggle games" });
+    }
+  });
+
+  // Reviews Routes
+  app.get("/api/games/:gameId/reviews", async (req, res) => {
+    try {
+      const reviews = await storage.getGameReviews(req.params.gameId);
+      
+      const reviewsWithUsers = await Promise.all(
+        reviews.map(async (review) => {
+          const user = await storage.getUser(review.userId);
+          return {
+            ...review,
+            username: user?.username || "Unknown",
+          };
+        })
+      );
+
+      res.json(reviewsWithUsers);
+    } catch (error) {
+      console.error("Error fetching reviews:", error);
+      res.status(500).json({ message: "Failed to fetch reviews" });
+    }
+  });
+
+  app.post("/api/reviews", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { gameId, rating, comment } = req.body;
+      if (!gameId || !rating) {
+        return res.status(400).json({ message: "Game ID and rating are required" });
+      }
+
+      if (rating < 1 || rating > 5) {
+        return res.status(400).json({ message: "Rating must be between 1 and 5" });
+      }
+
+      const existingReview = await storage.getUserReview(req.session.userId, gameId);
+      if (existingReview) {
+        const updatedReview = await storage.updateReview(existingReview.id, { rating, comment });
+        return res.json(updatedReview);
+      }
+
+      const review = await storage.createReview({
+        userId: req.session.userId,
+        gameId,
+        rating,
+        comment: comment || null,
+      });
+
+      res.json(review);
+    } catch (error) {
+      console.error("Error creating review:", error);
+      res.status(500).json({ message: "Failed to create review" });
+    }
+  });
+
+  app.delete("/api/reviews/:id", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      await storage.deleteReview(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting review:", error);
+      res.status(500).json({ message: "Failed to delete review" });
+    }
+  });
+
+  app.get("/api/reviews/check/:gameId", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const review = await storage.getUserReview(req.session.userId, req.params.gameId);
+      res.json({ review: review || null });
+    } catch (error) {
+      console.error("Error checking review:", error);
+      res.status(500).json({ message: "Failed to check review" });
+    }
+  });
+
+  // Wishlist Routes
+  app.get("/api/wishlist", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const wishlistEntries = await storage.getUserWishlist(req.session.userId);
+      const gamesWithDetails = await Promise.all(
+        wishlistEntries.map(async (entry) => {
+          const game = await storage.getGame(entry.gameId);
+          return { ...entry, game };
+        })
+      );
+
+      res.json(gamesWithDetails);
+    } catch (error) {
+      console.error("Error fetching wishlist:", error);
+      res.status(500).json({ message: "Failed to fetch wishlist" });
+    }
+  });
+
+  app.post("/api/wishlist", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { gameId } = req.body;
+      if (!gameId) {
+        return res.status(400).json({ message: "Game ID is required" });
+      }
+
+      const game = await storage.getGame(gameId);
+      if (!game) {
+        return res.status(404).json({ message: "Game not found" });
+      }
+
+      const inWishlist = await storage.isInWishlist(req.session.userId, gameId);
+      if (inWishlist) {
+        return res.status(400).json({ message: "Game already in wishlist" });
+      }
+
+      const wishlistEntry = await storage.addToWishlist({
+        userId: req.session.userId,
+        gameId,
+      });
+
+      res.json(wishlistEntry);
+    } catch (error) {
+      console.error("Error adding to wishlist:", error);
+      res.status(500).json({ message: "Failed to add to wishlist" });
+    }
+  });
+
+  app.delete("/api/wishlist/:gameId", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      await storage.removeFromWishlist(req.session.userId, req.params.gameId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing from wishlist:", error);
+      res.status(500).json({ message: "Failed to remove from wishlist" });
+    }
+  });
+
+  app.get("/api/wishlist/check/:gameId", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const inWishlist = await storage.isInWishlist(req.session.userId, req.params.gameId);
+      res.json({ inWishlist });
+    } catch (error) {
+      console.error("Error checking wishlist:", error);
+      res.status(500).json({ message: "Failed to check wishlist" });
+    }
+  });
+
+  // Download history
+  app.get("/api/downloads/history", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const downloads = await storage.getDownloadsByUser(req.session.userId);
+      const downloadsWithGames = await Promise.all(
+        downloads.map(async (download) => {
+          const game = await storage.getGame(download.gameId);
+          return { ...download, game };
+        })
+      );
+
+      res.json(downloadsWithGames);
+    } catch (error) {
+      console.error("Error fetching download history:", error);
+      res.status(500).json({ message: "Failed to fetch download history" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

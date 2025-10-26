@@ -6,7 +6,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Gamepad2, Download, Star, TrendingUp, Play } from "lucide-react";
 import type { Game, User } from "@shared/schema";
-import heroImage from "@assets/generated_images/Epic_gaming_hero_banner_836d68df.png";
 
 export default function Home() {
   const [, setLocation] = useLocation();
@@ -27,13 +26,15 @@ export default function Home() {
     }
   }, [session, isLoading, setLocation]);
 
-  const featuredGames = games?.filter((game) => game.featured).slice(0, 1) || [];
-  const recentGames = games?.slice(0, 8) || [];
+  const featuredGames = games?.filter((game) => game.featured && game.isActive).slice(0, 1) || [];
+  const recentGames = games?.filter((game) => game.isActive).slice(0, 8) || [];
 
   // Show loading or redirect - don't render content if not authenticated
   if (isLoading || !session?.user) {
     return null;
   }
+
+  const heroBackgroundImage = featuredGames[0]?.imageUrl || "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1920&h=1080&fit=crop";
 
   return (
     <div className="min-h-screen bg-background">
@@ -42,7 +43,7 @@ export default function Home() {
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{
-            backgroundImage: `url(${heroImage})`,
+            backgroundImage: `url(${heroBackgroundImage})`,
           }}
         >
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-background/40" />
