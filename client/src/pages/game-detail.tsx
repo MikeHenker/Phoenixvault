@@ -3,7 +3,10 @@ import { useRoute, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Download, ArrowLeft, Calendar, Plus, Check } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Download, ArrowLeft, Calendar, Plus, Check, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Game } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -26,6 +29,15 @@ export default function GameDetail() {
   const { data: libraryCheck } = useQuery<{ inLibrary: boolean }>({
     queryKey: ["/api/library/check", params?.id],
     enabled: !!params?.id && !!session?.user,
+  });
+
+  const { data: libraryEntry } = useQuery<any>({
+    queryKey: ["/api/library/entry", params?.id],
+    queryFn: async () => {
+      const library = await apiRequest("GET", "/api/library");
+      return library.find((entry: any) => entry.gameId === params?.id);
+    },
+    enabled: !!params?.id && !!session?.user && libraryCheck?.inLibrary,
   });
 
   const addToLibraryMutation = useMutation({
@@ -66,6 +78,27 @@ export default function GameDetail() {
     onError: (error: Error) => {
       toast({
         title: "Download failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateLibraryMutation = useMutation({
+    mutationFn: async ({ gameId, hasLocalFiles, exePath }: { gameId: string; hasLocalFiles?: boolean; exePath?: string }) => {
+      return await apiRequest("PATCH", `/api/library/${gameId}`, { hasLocalFiles, exePath });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/library/entry", params?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/library"] });
+      toast({
+        title: "Library updated!",
+        description: "Your settings have been saved",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Update failed",
         description: error.message,
         variant: "destructive",
       });
@@ -249,6 +282,65 @@ export default function GameDetail() {
                           )) || <p className="text-sm text-muted-foreground">No tags</p>}
                         </div>
                       </div>
+                      
+                      {libraryCheck?.inLibrary && (
+                        <div className="pt-4 border-t space-y-3">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="hasLocalFiles"
+                              checked={libraryEntry?.hasLocalFiles || false}
+                              onCheckedChange={(checked) => {
+                                updateLibraryMutation.mutate({
+                                  gameId: game.id,
+                                  hasLocalFiles: checked as boolean,
+                                });
+                              }}
+                              data-testid="checkbox-has-local-files"
+                            />
+                            <Label htmlFor="hasLocalFiles" className="text-sm cursor-pointer">
+                              I have the game files
+                            </Label>
+                          </div>
+                          
+                          {libraryEntry?.hasLocalFiles && (
+                            <div className="space-y-2">
+                              <Label htmlFor="exePath" className="text-sm">
+                                Game .exe path
+                              </Label>
+                              <div className="flex gap-2">
+                                <Input
+                                  id="exePath"
+                                  type="text"
+                                  placeholder="C:\Games\game.exe"
+                                  defaultValue={libraryEntry?.exePath || ""}
+                                  onBlur={(e) => {
+                                    if (e.target.value !== libraryEntry?.exePath) {
+                                      updateLibraryMutation.mutate({
+                                        gameId: game.id,
+                                        exePath: e.target.value,
+                                      });
+                                    }
+                                  }}
+                                  data-testid="input-exe-path"
+                                />
+                              </div>
+                              {libraryEntry?.exePath && (
+                                <Button
+                                  size="sm"
+                                  className="w-full mt-2"
+                                  onClick={() => {
+                                    window.open(`file:///${libraryEntry.exePath}`, '_blank');
+                                  }}
+                                  data-testid="button-launch-game"
+                                >
+                                  <Play className="w-4 h-4 mr-2" />
+                                  Launch Game
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </Card>

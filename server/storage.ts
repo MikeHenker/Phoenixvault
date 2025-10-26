@@ -22,7 +22,7 @@ import {
   type InsertWishlist,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, and } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -54,6 +54,7 @@ export interface IStorage {
   // User Library
   addToLibrary(data: InsertUserLibrary): Promise<UserLibrary>;
   removeFromLibrary(userId: string, gameId: string): Promise<void>;
+  updateLibraryEntry(userId: string, gameId: string, data: { hasLocalFiles?: boolean; exePath?: string }): Promise<UserLibrary>;
   getUserLibrary(userId: string): Promise<UserLibrary[]>;
   isInLibrary(userId: string, gameId: string): Promise<boolean>;
 
@@ -200,7 +201,26 @@ export class DatabaseStorage implements IStorage {
   async removeFromLibrary(userId: string, gameId: string): Promise<void> {
     await db
       .delete(userLibrary)
-      .where(sql`${userLibrary.userId} = ${userId} AND ${userLibrary.gameId} = ${gameId}`);
+      .where(
+        and(
+          eq(userLibrary.userId, userId),
+          eq(userLibrary.gameId, gameId)
+        )
+      );
+  }
+
+  async updateLibraryEntry(userId: string, gameId: string, data: { hasLocalFiles?: boolean; exePath?: string }): Promise<UserLibrary> {
+    const [entry] = await db
+      .update(userLibrary)
+      .set(data)
+      .where(
+        and(
+          eq(userLibrary.userId, userId),
+          eq(userLibrary.gameId, gameId)
+        )
+      )
+      .returning();
+    return entry;
   }
 
   async getUserLibrary(userId: string): Promise<UserLibrary[]> {
@@ -256,7 +276,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateGameRating(gameId: string): Promise<void> {
     const gameReviews = await db.select().from(reviews).where(eq(reviews.gameId, gameId));
-    
+
     if (gameReviews.length === 0) {
       await db
         .update(games)

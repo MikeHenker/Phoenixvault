@@ -265,6 +265,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/library/:gameId", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { hasLocalFiles, exePath } = req.body;
+      const libraryEntry = await storage.updateLibraryEntry(req.session.userId, req.params.gameId, {
+        hasLocalFiles,
+        exePath,
+      });
+
+      res.json(libraryEntry);
+    } catch (error) {
+      console.error("Error updating library entry:", error);
+      res.status(500).json({ message: "Failed to update library entry" });
+    }
+  });
+
   app.get("/api/library/check/:gameId", async (req, res) => {
     try {
       if (!req.session.userId) {

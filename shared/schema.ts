@@ -55,6 +55,8 @@ export const userLibrary = pgTable("user_library", {
   userId: varchar("user_id").notNull().references(() => users.id),
   gameId: varchar("game_id").notNull().references(() => games.id),
   addedAt: timestamp("added_at").notNull().defaultNow(),
+  hasLocalFiles: boolean("has_local_files").default(false),
+  exePath: text("exe_path"),
 });
 
 // Reviews and ratings table
