@@ -1,0 +1,103 @@
+# 🎮 PixelVault - Your Gaming Universe
+
+A stunning, modern game library manager for Windows with Steam integration and beautiful glassmorphism UI.
+
+![PixelVault](https://img.shields.io/badge/Platform-Windows-blue)
+![.NET](https://img.shields.io/badge/.NET-6.0-purple)
+![License](https://img.shields.io/badge/License-MIT-green)
+
+## ✨ Features
+
+### 🎨 **Beautiful Modern UI**
+- **Glassmorphism Design** with blur effects and transparency
+- **Vibrant Gradients** - Purple, pink, teal color schemes
+- **Neon Glow Effects** on interactive elements
+- **Smooth Animations** and transitions
+
+### 🎮 **Core Features**
+- **Drag & Drop** - Simply drag any `.exe` file to add games
+- **Steam Integration** - Automatically fetches game metadata, descriptions, and header images
+- **Icon Extraction** - Extracts and displays actual game icons from executables
+- **Game Launcher** - Launch games directly from the library
+
+### 📊 **Organization & Discovery**
+- **Search Bar** - Instantly filter games by name
+- **Smart Filters**:
+  - ⭐ Favorites - Quick access to your favorite games
+  - 🕒 Recent - Last 10 played games
+  - 🎮 All Games - Complete library view
+- **Sorting Options**:
+  - Name (A-Z / Z-A)
+  - Most Played
+  - Recently Added
+  - Last Played
+
+### 🏷️ **Customization**
+- **Tags System** - Add custom tags to organize games
+- **Favorites** - Mark games with ⭐ for quick access
+- **Notes** - Add personal notes for each game
+- **Play Statistics** - Track play count and last played dates
+
+### 🚀 **Advanced Features**
+- **Steam Import** - One-click import of all Steam games
+- **Persistent Storage** - Auto-saves library to AppData
+- **Statistics Dashboard** - View total games and favorites count
+
+## 📋 Requirements
+
+- Windows 10/11
+- .NET 6.0 Runtime or later
+
+## 🚀 Installation
+
+1. Download the latest release from [Releases](https://github.com/MikeHenker/Pixelvault/releases)
+2. Extract the ZIP file
+3. Run `GameLibrary.exe`
+
+## 🛠️ Building from Source
+
+### Prerequisites
+- .NET 6.0 SDK or later
+- Visual Studio 2022 or Visual Studio Code
+
+### Build Steps
+
+```powershell
+# Clone the repository
+git clone https://github.com/MikeHenker/Pixelvault.git
+cd Pixelvault
+
+# Restore dependencies
+dotnet restore
+
+# Build the project
+dotnet build --configuration Release
+
+# Run the application
+dotnet run
+```
+
+## 📖 Usage
+
+### Adding Games
+1. **Drag & Drop**: Drag any `.exe` file onto the PixelVault window
+2. **Steam Import**: Click the "📥 Import" button to automatically import Steam games
+
+### Managing Your Library
+- **Search**: Use the search box in the sidebar
+- **Filter**: Click Favorites, Recent, or All Games
+- **Sort**: Use the dropdown in the toolbar
+- **Tags**: Add custom tags to categorize games
+- **Notes**: Add personal notes for each game
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 📧 Contact
+
+- GitHub: [@MikeHenker](https://github.com/MikeHenker)
+
+---
+
+**Made with 💜 by the community**
