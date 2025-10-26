@@ -1,0 +1,32 @@
+{
+  "name": "game-launcher",
+  "version": "1.0.0",
+  "description": "Desktop game launcher with Steam metadata integration",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "NODE_ENV=development electron ."
+  },
+  "author": "",
+  "license": "MIT",
+  "build": {
+    "appId": "com.gamelauncher.app",
+    "productName": "Game Launcher",
+    "directories": {
+      "output": "../release"
+    },
+    "files": [
+      "../dist/**/*",
+      "./**/*"
+    ],
+    "win": {
+      "target": ["nsis", "portable"]
+    },
+    "mac": {
+      "target": ["dmg", "zip"]
+    },
+    "linux": {
+      "target": ["AppImage", "deb"]
+    }
+  }
+}
