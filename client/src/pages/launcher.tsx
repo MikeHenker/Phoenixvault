@@ -197,9 +197,9 @@ export default function Launcher() {
                   </div>
                   <div>
                     <h4 className="font-semibold mb-2">Method 2: Steam Import</h4>
-                    <p className="text-muted-foreground">
+                    <div className="text-muted-foreground">
                       Click the <Badge variant="outline">📥 Import</Badge> button to automatically import all your Steam games
-                    </p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
