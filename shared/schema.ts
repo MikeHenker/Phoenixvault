@@ -35,6 +35,9 @@ export const games = pgTable("games", {
   category: text("category").notNull(),
   tags: text("tags").array().notNull().default(sql`ARRAY[]::text[]`),
   featured: boolean("featured").notNull().default(false),
+  isActive: boolean("is_active").notNull().default(true),
+  averageRating: integer("average_rating").default(0),
+  totalRatings: integer("total_ratings").default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -54,9 +57,30 @@ export const userLibrary = pgTable("user_library", {
   addedAt: timestamp("added_at").notNull().defaultNow(),
 });
 
+// Reviews and ratings table
+export const reviews = pgTable("reviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  gameId: varchar("game_id").notNull().references(() => games.id),
+  rating: integer("rating").notNull(),
+  comment: text("comment"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Wishlist table
+export const wishlist = pgTable("wishlist", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  gameId: varchar("game_id").notNull().references(() => games.id),
+  addedAt: timestamp("added_at").notNull().defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many, one }) => ({
   downloads: many(downloads),
+  reviews: many(reviews),
+  wishlist: many(wishlist),
   license: one(licenses, {
     fields: [users.licenseKey],
     references: [licenses.key],
@@ -72,6 +96,8 @@ export const licensesRelations = relations(licenses, ({ one }) => ({
 
 export const gamesRelations = relations(games, ({ many }) => ({
   downloads: many(downloads),
+  reviews: many(reviews),
+  wishlist: many(wishlist),
 }));
 
 export const downloadsRelations = relations(downloads, ({ one }) => ({
@@ -92,6 +118,28 @@ export const userLibraryRelations = relations(userLibrary, ({ one }) => ({
   }),
   game: one(games, {
     fields: [userLibrary.gameId],
+    references: [games.id],
+  }),
+}));
+
+export const reviewsRelations = relations(reviews, ({ one }) => ({
+  user: one(users, {
+    fields: [reviews.userId],
+    references: [users.id],
+  }),
+  game: one(games, {
+    fields: [reviews.gameId],
+    references: [games.id],
+  }),
+}));
+
+export const wishlistRelations = relations(wishlist, ({ one }) => ({
+  user: one(users, {
+    fields: [wishlist.userId],
+    references: [users.id],
+  }),
+  game: one(games, {
+    fields: [wishlist.gameId],
     references: [games.id],
   }),
 }));
@@ -124,6 +172,17 @@ export const insertUserLibrarySchema = createInsertSchema(userLibrary).omit({
   addedAt: true,
 });
 
+export const insertReviewSchema = createInsertSchema(reviews).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertWishlistSchema = createInsertSchema(wishlist).omit({
+  id: true,
+  addedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -139,3 +198,9 @@ export type InsertDownload = z.infer<typeof insertDownloadSchema>;
 
 export type UserLibrary = typeof userLibrary.$inferSelect;
 export type InsertUserLibrary = z.infer<typeof insertUserLibrarySchema>;
+
+export type Review = typeof reviews.$inferSelect;
+export type InsertReview = z.infer<typeof insertReviewSchema>;
+
+export type Wishlist = typeof wishlist.$inferSelect;
+export type InsertWishlist = z.infer<typeof insertWishlistSchema>;
