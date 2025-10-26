@@ -347,12 +347,15 @@ export default function GameDetail() {
                                   size="sm"
                                   className="w-full mt-2"
                                   onClick={() => {
-                                    window.open(`file:///${libraryEntry.exePath}`, '_blank');
+                                    navigator.clipboard.writeText(libraryEntry.exePath);
+                                    toast({
+                                      title: "Path copied!",
+                                      description: "Game path copied to clipboard",
+                                    });
                                   }}
-                                  data-testid="button-launch-game"
+                                  data-testid="button-copy-path"
                                 >
-                                  <Play className="w-4 h-4 mr-2" />
-                                  Launch Game
+                                  Copy Path
                                 </Button>
                               )}
                             </div>
