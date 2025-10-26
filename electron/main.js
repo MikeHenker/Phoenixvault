@@ -1,6 +1,6 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
-const { exec } = require('child_process');
+const { spawn } = require('child_process');
 const fs = require('fs');
 
 let mainWindow;
@@ -28,10 +28,9 @@ function getGames() {
 function saveGames(games) {
   try {
     fs.writeFileSync(GAMES_DB_PATH, JSON.stringify({ games }, null, 2));
-    return true;
   } catch (error) {
     console.error('Error saving games:', error);
-    return false;
+    throw new Error('Failed to save games to disk');
   }
 }
 
@@ -113,6 +112,29 @@ ipcMain.handle('add-game', async (event, filePath) => {
   }
 });
 
+// Cache for Steam app list (refresh every 24 hours)
+let steamAppListCache = null;
+let steamAppListCacheTime = 0;
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
+async function getSteamAppList() {
+  const now = Date.now();
+  
+  // Return cached data if it's still valid
+  if (steamAppListCache && (now - steamAppListCacheTime) < CACHE_DURATION) {
+    return steamAppListCache;
+  }
+
+  // Fetch new data
+  const response = await fetch('https://api.steampowered.com/ISteamApps/GetAppList/v2/');
+  const data = await response.json();
+  
+  steamAppListCache = data.applist.apps;
+  steamAppListCacheTime = now;
+  
+  return steamAppListCache;
+}
+
 // Fetch Steam metadata
 ipcMain.handle('fetch-steam-metadata', async (event, gameId, gameName) => {
   try {
@@ -123,14 +145,13 @@ ipcMain.handle('fetch-steam-metadata', async (event, gameId, gameName) => {
       throw new Error('Game not found');
     }
 
-    // First, search for the game in Steam's app list
-    const searchResponse = await fetch('https://api.steampowered.com/ISteamApps/GetAppList/v2/');
-    const searchData = await searchResponse.json();
+    // Get Steam app list (cached)
+    const apps = await getSteamAppList();
     
     // Find the best match for the game name
-    const steamApp = searchData.applist.apps.find(app => 
+    const steamApp = apps.find(app => 
       app.name.toLowerCase() === gameName.toLowerCase()
-    ) || searchData.applist.apps.find(app => 
+    ) || apps.find(app => 
       app.name.toLowerCase().includes(gameName.toLowerCase())
     );
 
@@ -178,31 +199,26 @@ ipcMain.handle('fetch-steam-metadata', async (event, gameId, gameName) => {
 
 // Launch game
 ipcMain.handle('launch-game', async (event, gamePath) => {
-  return new Promise((resolve, reject) => {
-    // Determine the command based on platform and file type
-    let command;
-    
-    if (process.platform === 'win32') {
-      command = `"${gamePath}"`;
-    } else if (process.platform === 'darwin') {
-      if (gamePath.endsWith('.app')) {
-        command = `open "${gamePath}"`;
-      } else {
-        command = `"${gamePath}"`;
-      }
-    } else {
-      command = `"${gamePath}"`;
+  try {
+    // Validate that the file exists
+    if (!fs.existsSync(gamePath)) {
+      throw new Error('Game executable not found');
     }
 
-    exec(command, (error, stdout, stderr) => {
-      if (error) {
-        console.error('Launch error:', error);
-        reject(error);
-        return;
-      }
-      resolve({ success: true });
-    });
-  });
+    // Use shell.openPath for better security - it uses the OS's default handler
+    // without shell command execution
+    const result = await shell.openPath(gamePath);
+    
+    if (result) {
+      // If result is not empty, it's an error message
+      throw new Error(result);
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Launch error:', error);
+    throw error;
+  }
 });
 
 // Delete game from library
