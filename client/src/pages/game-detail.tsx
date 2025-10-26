@@ -31,7 +31,7 @@ export default function GameDetail() {
     enabled: !!params?.id && !!session?.user,
   });
 
-  const { data: libraryEntry } = useQuery<any>({
+  const { data: libraryEntry, refetch: refetchLibraryEntry } = useQuery<any>({
     queryKey: ["/api/library/entry", params?.id],
     queryFn: async () => {
       const library = await apiRequest("GET", "/api/library");
@@ -88,9 +88,10 @@ export default function GameDetail() {
     mutationFn: async ({ gameId, hasLocalFiles, exePath }: { gameId: string; hasLocalFiles?: boolean; exePath?: string }) => {
       return await apiRequest("PATCH", `/api/library/${gameId}`, { hasLocalFiles, exePath });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/library/entry", params?.id] });
-      queryClient.invalidateQueries({ queryKey: ["/api/library"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/library/entry", params?.id] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/library"] });
+      await refetchLibraryEntry();
       toast({
         title: "Library updated!",
         description: "Your settings have been saved",
