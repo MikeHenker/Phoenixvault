@@ -157,7 +157,7 @@ export default function Register() {
                 <Button
                   variant="link"
                   className="p-0 h-auto"
-                  onClick={() => setLocation("/login")}
+                  onClick={() => setLocation("/auth/login")}
                   data-testid="button-login-link"
                 >
                   Sign in here

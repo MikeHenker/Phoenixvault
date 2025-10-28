@@ -92,7 +92,7 @@ export default function Home() {
                       Get Started
                     </Button>
                   </Link>
-                  <Link href="/register">
+                  <Link href="/auth/register">
                     <Button
                       size="lg"
                       variant="outline"
