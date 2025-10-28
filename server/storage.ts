@@ -6,6 +6,13 @@ import {
   userLibrary,
   reviews,
   wishlist,
+  screenshots,
+  activities,
+  follows,
+  achievements,
+  userAchievements,
+  playtime,
+  comments,
   type User,
   type InsertUser,
   type License,
@@ -75,6 +82,11 @@ export interface IStorage {
   // Bulk operations
   bulkDeleteGames(gameIds: string[]): Promise<void>;
   bulkToggleGameActive(gameIds: string[], isActive: boolean): Promise<void>;
+
+  // Screenshots
+  createScreenshot(data: any): Promise<any>;
+  getGameScreenshots(gameId: string): Promise<any[]>;
+  deleteScreenshot(id: string, userId: string): Promise<void>;
 
   // Stats
   getStats(): Promise<{
@@ -334,6 +346,28 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  // Screenshots
+  async createScreenshot(data: any): Promise<any> {
+    const { screenshots } = await import("@shared/schema");
+    const [screenshot] = await db.insert(screenshots).values(data).returning();
+    return screenshot;
+  }
+
+  async getGameScreenshots(gameId: string): Promise<any[]> {
+    const { screenshots } = await import("@shared/schema");
+    return await db.select().from(screenshots).where(eq(screenshots.gameId, gameId));
+  }
+
+  async deleteScreenshot(id: string, userId: string): Promise<void> {
+    const { screenshots } = await import("@shared/schema");
+    await db.delete(screenshots).where(
+      and(
+        eq(screenshots.id, id),
+        eq(screenshots.userId, userId)
+      )
+    );
+  }
+
   // Stats
   async getStats(): Promise<{
     totalUsers: number;
@@ -381,6 +415,150 @@ export class DatabaseStorage implements IStorage {
     );
 
     return stats.sort((a, b) => b.downloads - a.downloads);
+  }
+
+  // Screenshots
+  async createScreenshot(data: any): Promise<any> {
+    const [screenshot] = await db.insert(screenshots).values(data).returning();
+    return screenshot;
+  }
+
+  async getGameScreenshots(gameId: string): Promise<any[]> {
+    return await db.select().from(screenshots).where(eq(screenshots.gameId, gameId));
+  }
+
+  async deleteScreenshot(id: string, userId: string): Promise<void> {
+    await db.delete(screenshots).where(and(eq(screenshots.id, id), eq(screenshots.userId, userId)));
+  }
+
+  // Activities
+  async createActivity(data: any): Promise<any> {
+    const [activity] = await db.insert(activities).values(data).returning();
+    return activity;
+  }
+
+  async getActivityFeed(userId: string): Promise<any[]> {
+    return await db.select().from(activities).where(eq(activities.userId, userId)).orderBy(desc(activities.createdAt));
+  }
+
+  async getUserActivity(userId: string): Promise<any[]> {
+    return await db.select().from(activities).where(eq(activities.userId, userId)).orderBy(desc(activities.createdAt));
+  }
+
+  // User Stats and Profile
+  async getUserStats(userId: string): Promise<any> {
+    const libraryCount = await db.select({ count: sql<number>`count(*)` }).from(userLibrary).where(eq(userLibrary.userId, userId));
+    const reviewCount = await db.select({ count: sql<number>`count(*)` }).from(reviews).where(eq(reviews.userId, userId));
+    const followerCount = await db.select({ count: sql<number>`count(*)` }).from(follows).where(eq(follows.followingId, userId));
+    const followingCount = await db.select({ count: sql<number>`count(*)` }).from(follows).where(eq(follows.followerId, userId));
+
+    return {
+      gamesOwned: Number(libraryCount[0].count),
+      reviewsWritten: Number(reviewCount[0].count),
+      followers: Number(followerCount[0].count),
+      following: Number(followingCount[0].count),
+    };
+  }
+
+  async updateUserProfile(userId: string, data: { avatarUrl?: string; bio?: string; location?: string }): Promise<User> {
+    return await this.updateUser(userId, data);
+  }
+
+  // Followers
+  async getFollowers(userId: string): Promise<any[]> {
+    return await db.select().from(follows).where(eq(follows.followingId, userId));
+  }
+
+  async getFollowing(userId: string): Promise<any[]> {
+    return await db.select().from(follows).where(eq(follows.followerId, userId));
+  }
+
+  async followUser(followerId: string, followingId: string): Promise<any> {
+    const [follow] = await db.insert(follows).values({ followerId, followingId }).returning();
+    return follow;
+  }
+
+  async unfollowUser(followerId: string, followingId: string): Promise<void> {
+    await db.delete(follows).where(and(eq(follows.followerId, followerId), eq(follows.followingId, followingId)));
+  }
+
+  async isFollowing(followerId: string, followingId: string): Promise<boolean> {
+    const [result] = await db.select().from(follows).where(and(eq(follows.followerId, followerId), eq(follows.followingId, followingId)));
+    return !!result;
+  }
+
+  // Achievements
+  async getGameAchievements(gameId: string): Promise<any[]> {
+    return await db.select().from(achievements).where(eq(achievements.gameId, gameId));
+  }
+
+  async getUserAchievements(userId: string): Promise<any[]> {
+    return await db.select().from(userAchievements).where(eq(userAchievements.userId, userId));
+  }
+
+  async getAchievement(id: string): Promise<any> {
+    const [achievement] = await db.select().from(achievements).where(eq(achievements.id, id));
+    return achievement;
+  }
+
+  async unlockAchievement(userId: string, achievementId: string): Promise<any> {
+    const [unlocked] = await db.insert(userAchievements).values({ userId, achievementId }).returning();
+    return unlocked;
+  }
+
+  // Playtime
+  async getUserPlaytime(userId: string): Promise<any[]> {
+    return await db.select().from(playtime).where(eq(playtime.userId, userId));
+  }
+
+  async updatePlaytime(userId: string, gameId: string, minutes: number): Promise<any> {
+    const existing = await db.select().from(playtime).where(and(eq(playtime.userId, userId), eq(playtime.gameId, gameId)));
+    
+    if (existing.length > 0) {
+      const [updated] = await db.update(playtime)
+        .set({ totalMinutes: existing[0].totalMinutes + minutes, lastPlayed: new Date(), updatedAt: new Date() })
+        .where(and(eq(playtime.userId, userId), eq(playtime.gameId, gameId)))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(playtime).values({ userId, gameId, totalMinutes: minutes, lastPlayed: new Date() }).returning();
+      return created;
+    }
+  }
+
+  // Comments
+  async getGameComments(gameId: string): Promise<any[]> {
+    return await db.select().from(comments).where(eq(comments.gameId, gameId)).orderBy(desc(comments.createdAt));
+  }
+
+  async createComment(data: any): Promise<any> {
+    const [comment] = await db.insert(comments).values(data).returning();
+    return comment;
+  }
+
+  async updateComment(id: string, userId: string, content: string): Promise<any> {
+    const [comment] = await db.update(comments)
+      .set({ content, updatedAt: new Date() })
+      .where(and(eq(comments.id, id), eq(comments.userId, userId)))
+      .returning();
+    return comment;
+  }
+
+  async deleteComment(id: string, userId: string): Promise<void> {
+    await db.delete(comments).where(and(eq(comments.id, id), eq(comments.userId, userId)));
+  }
+
+  // Trending and Popular
+  async getTrendingGames(): Promise<Game[]> {
+    return await db.select().from(games).orderBy(desc(games.createdAt)).limit(10);
+  }
+
+  async getPopularGames(): Promise<Game[]> {
+    return await db.select().from(games).orderBy(desc(games.totalRatings)).limit(10);
+  }
+
+  async getRecommendations(userId: string): Promise<Game[]> {
+    return await db.select().from(games).orderBy(desc(games.averageRating)).limit(10);
   }
 }
 

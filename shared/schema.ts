@@ -34,7 +34,7 @@ export const games = pgTable("games", {
   title: text("title").notNull(),
   description: text("description").notNull(),
   imageUrl: text("image_url").notNull(),
-  downloadUrl: text("download_url").notNull(),
+  downloadUrl: text("download_url").notNull().default(''),
   category: text("category").notNull(),
   tags: text("tags").array().notNull().default(sql`ARRAY[]::text[]`),
   featured: boolean("featured").notNull().default(false),

@@ -37,6 +37,9 @@ export default function AdminGames() {
   const [steamSearchQuery, setSteamSearchQuery] = useState("");
   const [steamSearchResults, setSteamSearchResults] = useState<any[]>([]);
 
+  const [importingAppId, setImportingAppId] = useState<string | null>(null);
+  const [downloadLinkInput, setDownloadLinkInput] = useState("");
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -95,14 +98,17 @@ export default function AdminGames() {
   });
 
   const steamImportMutation = useMutation({
-    mutationFn: async (appId: string) => {
+    mutationFn: async ({ appId, downloadUrl }: { appId: string; downloadUrl?: string }) => {
       const response = await fetch("/api/admin/games/import-steam", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ appId }),
+        body: JSON.stringify({ appId, downloadUrl }),
       });
-      if (!response.ok) throw new Error("Failed to import from Steam");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to import from Steam");
+      }
       return response.json();
     },
     onSuccess: (data) => {
@@ -110,9 +116,11 @@ export default function AdminGames() {
       setIsSteamImportOpen(false);
       setSteamSearchQuery("");
       setSteamSearchResults([]);
+      setImportingAppId(null);
+      setDownloadLinkInput("");
       toast({
-        title: "Game imported",
-        description: `${data.game.title} has been imported from Steam with screenshots`,
+        title: "Game imported successfully",
+        description: `${data.game.title} has been imported with ${data.steamData.screenshotCount} screenshots`,
       });
     },
     onError: (error: Error) => {
@@ -181,6 +189,20 @@ export default function AdminGames() {
     }
   };
 
+  const handleImportGame = (appId: string) => {
+    setImportingAppId(appId);
+  };
+
+  const confirmImport = () => {
+    if (importingAppId) {
+      steamImportMutation.mutate({ 
+        appId: importingAppId, 
+        downloadUrl: downloadLinkInput.trim() || undefined 
+      });
+    }
+  };
+
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -221,21 +243,65 @@ export default function AdminGames() {
                   />
                   <Button onClick={searchSteam} disabled={steamImportMutation.isPending}>Search</Button>
                 </div>
-                <div className="max-h-96 overflow-y-auto space-y-2">
-                  {steamSearchResults.map((result) => (
-                    <Card key={result.appId} className="p-4 cursor-pointer hover:bg-accent" onClick={() => steamImportMutation.mutate(result.appId)}>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-semibold">{result.name}</h4>
-                          <p className="text-sm text-muted-foreground">App ID: {result.appId}</p>
+                {importingAppId ? (
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-semibold mb-2">Importing Game</h4>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Game details and screenshots will be imported from Steam. 
+                        Provide a download link to make the game active immediately.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="downloadLink">Download Link (Optional)</Label>
+                      <Input
+                        id="downloadLink"
+                        type="url"
+                        placeholder="https://example.com/game-download.zip"
+                        value={downloadLinkInput}
+                        onChange={(e) => setDownloadLinkInput(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Leave empty to add the download link later by editing the game
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={confirmImport} 
+                        disabled={steamImportMutation.isPending}
+                        className="flex-1"
+                      >
+                        {steamImportMutation.isPending ? "Importing..." : "Import Game"}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setImportingAppId(null);
+                          setDownloadLinkInput("");
+                        }}
+                        disabled={steamImportMutation.isPending}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="max-h-96 overflow-y-auto space-y-2">
+                    {steamSearchResults.map((result) => (
+                      <Card key={result.appId} className="p-4 cursor-pointer hover:bg-accent" onClick={() => handleImportGame(result.appId)}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-semibold">{result.name}</h4>
+                            <p className="text-sm text-muted-foreground">App ID: {result.appId}</p>
+                          </div>
+                          <Button size="sm">
+                            Select
+                          </Button>
                         </div>
-                        <Button size="sm" disabled={steamImportMutation.isPending}>
-                          {steamImportMutation.isPending ? "Importing..." : "Import"}
-                        </Button>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </div>
             </DialogContent>
           </Dialog>

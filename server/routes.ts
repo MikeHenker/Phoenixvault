@@ -456,7 +456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/games/:gameId/reviews", async (req, res) => {
     try {
       const reviews = await storage.getGameReviews(req.params.gameId);
-      
+
       const reviewsWithUsers = await Promise.all(
         reviews.map(async (review) => {
           const user = await storage.getUser(review.userId);
@@ -674,7 +674,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const follow = await storage.followUser(req.session.userId, req.params.userId);
-      
+
       // Create activity
       await storage.createActivity({
         userId: req.session.userId,
@@ -729,7 +729,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { password, ...userWithoutPassword } = user;
       const stats = await storage.getUserStats(req.params.userId);
-      
+
       res.json({ user: userWithoutPassword, stats });
     } catch (error) {
       console.error("Error fetching user profile:", error);
@@ -786,7 +786,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const unlocked = await storage.unlockAchievement(req.session.userId, req.params.achievementId);
-      
+
       // Create activity
       const achievement = await storage.getAchievement(req.params.achievementId);
       await storage.createActivity({
@@ -1038,7 +1038,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/admin/games/import-steam", requireAdmin, async (req, res) => {
     try {
-      const { appId } = req.body;
+      const { appId, downloadUrl } = req.body;
       if (!appId) {
         return res.status(400).json({ message: "Steam App ID is required" });
       }
@@ -1048,33 +1048,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Game not found on Steam" });
       }
 
+      // Build comprehensive description
+      const fullDescription = steamData.fullDescription 
+        ? steamData.fullDescription.replace(/<[^>]*>/g, '').slice(0, 1000)
+        : steamData.shortDescription || '';
+
+      // Combine genres and categories for tags
+      const allTags = [
+        ...steamData.genres,
+        ...steamData.categories.slice(0, 5)
+      ].filter((tag, index, self) => self.indexOf(tag) === index);
+
       // Create game with Steam data
       const game = await storage.createGame({
         title: steamData.name,
-        description: steamData.shortDescription,
+        description: fullDescription,
         imageUrl: steamData.headerImage,
         category: steamData.genres[0] || 'Action',
-        tags: steamData.genres,
-        downloadUrl: '', // Admin needs to provide this
-        releaseDate: steamData.releaseDate,
-        developer: steamData.developers[0] || '',
-        publisher: steamData.publishers[0] || '',
-        isActive: true,
-        averageRating: 0,
-        totalReviews: 0,
+        tags: allTags,
+        downloadUrl: downloadUrl || '', // Admin provides this or can edit later
+        featured: false,
+        isActive: !!downloadUrl, // Only active if download link provided
       });
 
-      // Create screenshots
-      for (const screenshot of steamData.screenshots.slice(0, 6)) {
+      // Create screenshots (up to 8)
+      for (const screenshot of steamData.screenshots.slice(0, 8)) {
         await storage.createScreenshot({
           gameId: game.id,
           userId: req.session.userId!,
-          imageUrl: screenshot.pathFull,
+          imageUrl: screenshot.path_full,
           caption: null,
         });
       }
 
-      res.json({ game, steamData });
+      res.json({ 
+        game, 
+        steamData: {
+          name: steamData.name,
+          developers: steamData.developers,
+          publishers: steamData.publishers,
+          releaseDate: steamData.releaseDate,
+          genres: steamData.genres,
+          categories: steamData.categories,
+          screenshotCount: steamData.screenshots.length,
+          hasMovies: steamData.movies.length > 0,
+        }
+      });
     } catch (error) {
       console.error("Error importing from Steam:", error);
       res.status(500).json({ message: "Failed to import game from Steam" });
