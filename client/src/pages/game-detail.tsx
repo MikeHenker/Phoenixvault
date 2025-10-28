@@ -405,17 +405,17 @@ export default function GameDetail() {
                   {steamData.pcRequirements.minimum && (
                     <div>
                       <h4 className="font-semibold mb-3 text-lg" data-testid="text-minimum-requirements">Minimum</h4>
-                      <p className="text-sm text-muted-foreground whitespace-pre-line" data-testid="text-minimum-requirements-content">
+                      <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-sans" data-testid="text-minimum-requirements-content">
                         {steamData.pcRequirements.minimum}
-                      </p>
+                      </pre>
                     </div>
                   )}
                   {steamData.pcRequirements.recommended && (
                     <div>
                       <h4 className="font-semibold mb-3 text-lg" data-testid="text-recommended-requirements">Recommended</h4>
-                      <p className="text-sm text-muted-foreground whitespace-pre-line" data-testid="text-recommended-requirements-content">
+                      <pre className="text-sm text-muted-foreground whitespace-pre-wrap font-sans" data-testid="text-recommended-requirements-content">
                         {steamData.pcRequirements.recommended}
-                      </p>
+                      </pre>
                     </div>
                   )}
                 </div>

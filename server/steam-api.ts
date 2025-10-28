@@ -112,10 +112,18 @@ export async function getSteamGameDetails(appId: string): Promise<SteamGameDetai
     // Helper function to strip HTML tags
     const stripHtml = (html: string) => html?.replace(/<[^>]*>/g, '') || '';
 
-    // Helper function to parse requirements
+    // Helper function to parse requirements - preserve newlines and structure
     const parseRequirements = (req: any) => ({
-      minimum: stripHtml(req?.minimum || ''),
-      recommended: stripHtml(req?.recommended || '')
+      minimum: req?.minimum ? req.minimum
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/?(ul|li|strong|p)>/gi, '')
+        .replace(/<[^>]*>/g, '')
+        .trim() : '',
+      recommended: req?.recommended ? req.recommended
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/?(ul|li|strong|p)>/gi, '')
+        .replace(/<[^>]*>/g, '')
+        .trim() : ''
     });
 
     return {
