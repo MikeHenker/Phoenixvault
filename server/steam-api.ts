@@ -96,6 +96,25 @@ export interface SteamGameDetails {
     appid: number;
     description: string;
   }>;
+  steamStoreUrl: string;
+  userReviews: {
+    summary: {
+      total_positive: number;
+      total_negative: number;
+      total_reviews: number;
+      review_score: number;
+      review_score_desc: string;
+    } | null;
+    reviews: Array<{
+      author: string;
+      playtime: number;
+      recommendation: string;
+      reviewText: string;
+      timestamp: number;
+      helpful: number;
+      funny: number;
+    }>;
+  } | null;
 }
 
 export async function getSteamGameDetails(appId: string): Promise<SteamGameDetails | null> {
@@ -108,6 +127,17 @@ export async function getSteamGameDetails(appId: string): Promise<SteamGameDetai
     }
 
     const gameData = data.data;
+
+    // Fetch reviews from Steam
+    let reviewsData = null;
+    try {
+      const reviewsResponse = await axios.get(`https://store.steampowered.com/appreviews/${appId}?json=1&num_per_page=10&filter=recent&language=english`);
+      if (reviewsResponse.data && reviewsResponse.data.success === 1) {
+        reviewsData = reviewsResponse.data;
+      }
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+    }
 
     // Helper function to strip HTML tags
     const stripHtml = (html: string) => html?.replace(/<[^>]*>/g, '') || '';
@@ -210,7 +240,20 @@ export async function getSteamGameDetails(appId: string): Promise<SteamGameDetai
       demos: gameData.demos?.map((d: any) => ({
         appid: d.appid,
         description: d.description || ''
-      })) || []
+      })) || [],
+      steamStoreUrl: `https://store.steampowered.com/app/${appId}`,
+      userReviews: reviewsData ? {
+        summary: reviewsData.query_summary || null,
+        reviews: reviewsData.reviews?.slice(0, 5).map((review: any) => ({
+          author: review.author?.steamid || '',
+          playtime: review.author?.playtime_forever || 0,
+          recommendation: review.voted_up ? 'Recommended' : 'Not Recommended',
+          reviewText: review.review || '',
+          timestamp: review.timestamp_created || 0,
+          helpful: review.votes_up || 0,
+          funny: review.votes_funny || 0
+        })) || []
+      } : null
     };
   } catch (error) {
     console.error("Error fetching Steam game details:", error);

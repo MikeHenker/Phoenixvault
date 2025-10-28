@@ -421,6 +421,104 @@ export default function GameDetail() {
                 </div>
               </Card>
             )}
+
+            {/* User Reviews */}
+            {steamData?.userReviews && steamData.userReviews.reviews.length > 0 && (
+              <Card className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold" data-testid="text-reviews-title">User Reviews</h3>
+                  {steamData.steamStoreUrl && (
+                    <Button
+                      variant="outline"
+                      onClick={() => window.open(steamData.steamStoreUrl, '_blank')}
+                      data-testid="button-steam-store"
+                    >
+                      View on Steam Store
+                    </Button>
+                  )}
+                </div>
+                
+                {steamData.userReviews.summary && (
+                  <div className="mb-6 p-4 bg-muted rounded-lg">
+                    <div className="flex items-center gap-4">
+                      <div>
+                        <p className="text-2xl font-bold text-blue-500" data-testid="text-review-score">
+                          {steamData.userReviews.summary.review_score_desc}
+                        </p>
+                        <p className="text-sm text-muted-foreground" data-testid="text-review-total">
+                          {steamData.userReviews.summary.total_reviews.toLocaleString()} reviews
+                        </p>
+                      </div>
+                      <div className="flex-1 text-right">
+                        <p className="text-sm">
+                          <span className="text-green-500 font-semibold" data-testid="text-positive-reviews">
+                            {steamData.userReviews.summary.total_positive.toLocaleString()} positive
+                          </span>
+                          {' / '}
+                          <span className="text-red-500 font-semibold" data-testid="text-negative-reviews">
+                            {steamData.userReviews.summary.total_negative.toLocaleString()} negative
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  {steamData.userReviews.reviews.map((review, index) => (
+                    <Card key={index} className="p-4" data-testid={`card-review-${index}`}>
+                      <div className="flex items-start gap-4">
+                        <div className="flex-shrink-0">
+                          {review.recommendation === 'Recommended' ? (
+                            <div className="flex items-center gap-2 text-blue-500">
+                              <Check className="w-5 h-5" />
+                              <span className="font-semibold text-sm" data-testid={`text-recommendation-${index}`}>
+                                Recommended
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 text-red-500">
+                              <span className="font-semibold text-sm" data-testid={`text-recommendation-${index}`}>
+                                Not Recommended
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-muted-foreground mb-2">
+                            {(review.playtime / 60).toFixed(1)} hours on record
+                          </p>
+                          <pre className="text-sm whitespace-pre-wrap font-sans leading-relaxed" data-testid={`text-review-content-${index}`}>
+{review.reviewText}
+                          </pre>
+                          <div className="flex gap-4 mt-3 text-xs text-muted-foreground">
+                            <span data-testid={`text-helpful-${index}`}>👍 {review.helpful} helpful</span>
+                            {review.funny > 0 && (
+                              <span data-testid={`text-funny-${index}`}>😄 {review.funny} funny</span>
+                            )}
+                            <span data-testid={`text-date-${index}`}>
+                              Posted {new Date(review.timestamp * 1000).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+
+                {steamData.steamStoreUrl && (
+                  <div className="mt-6 text-center">
+                    <Button
+                      variant="outline"
+                      onClick={() => window.open(steamData.steamStoreUrl, '_blank')}
+                      data-testid="button-view-all-reviews"
+                    >
+                      View All Reviews on Steam
+                    </Button>
+                  </div>
+                )}
+              </Card>
+            )}
           </div>
 
           {/* Sidebar */}
