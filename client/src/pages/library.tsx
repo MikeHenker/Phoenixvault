@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Download, Search, Filter } from "lucide-react";
+import { Download, Search, Filter, Grid3x3, List } from "lucide-react";
 import type { Game } from "@shared/schema";
 
 export default function Library() {
@@ -20,6 +20,7 @@ export default function Library() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
   const [viewMode, setViewMode] = useState<"my-library" | "all-games">("my-library");
+  const [displayMode, setDisplayMode] = useState<"grid" | "list">("grid");
 
   const { data: allGames, isLoading: allGamesLoading } = useQuery<Game[]>({
     queryKey: ["/api/games"],
@@ -50,6 +51,8 @@ export default function Library() {
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         } else if (sortBy === "alphabetical") {
           return a.title.localeCompare(b.title);
+        } else if (sortBy === "category") {
+          return a.category.localeCompare(b.category);
         }
         return 0;
       }) || [];
@@ -129,8 +132,25 @@ export default function Library() {
             <SelectContent>
               <SelectItem value="recent">Recently Added</SelectItem>
               <SelectItem value="alphabetical">Alphabetical</SelectItem>
+              <SelectItem value="category">By Category</SelectItem>
             </SelectContent>
           </Select>
+          <div className="flex gap-2">
+            <Button
+              variant={displayMode === "grid" ? "default" : "outline"}
+              size="icon"
+              onClick={() => setDisplayMode("grid")}
+            >
+              <Grid3x3 className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={displayMode === "list" ? "default" : "outline"}
+              size="icon"
+              onClick={() => setDisplayMode("list")}
+            >
+              <List className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
 
         {/* Games Grid */}
@@ -156,7 +176,7 @@ export default function Library() {
               No games found matching your criteria
             </p>
           </Card>
-        ) : (
+        ) : displayMode === "grid" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredGames.map((game) => (
               <Link key={game.id} href={`/game/${game.id}`}>
@@ -195,6 +215,39 @@ export default function Library() {
                       data-testid={`text-game-description-${game.id}`}
                       dangerouslySetInnerHTML={{ __html: game.description }}
                     />
+                  </div>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredGames.map((game) => (
+              <Link key={game.id} href={`/game/${game.id}`}>
+                <Card className="group hover-elevate cursor-pointer" data-testid={`card-list-game-${game.id}`}>
+                  <div className="flex gap-4 p-4">
+                    <img
+                      src={game.imageUrl}
+                      alt={game.title}
+                      className="w-48 h-24 object-cover rounded"
+                      data-testid={`img-list-game-${game.id}`}
+                    />
+                    <div className="flex-1">
+                      <h3 className="font-bold text-lg mb-1" data-testid={`text-list-title-${game.id}`}>
+                        {game.title}
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-2">{game.category}</p>
+                      <div
+                        className="text-sm text-muted-foreground line-clamp-2"
+                        dangerouslySetInnerHTML={{ __html: game.description }}
+                      />
+                    </div>
+                    <div className="flex items-center">
+                      <Button size="sm">
+                        <Download className="w-4 h-4 mr-2" />
+                        Download
+                      </Button>
+                    </div>
                   </div>
                 </Card>
               </Link>

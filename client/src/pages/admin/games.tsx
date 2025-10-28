@@ -40,6 +40,10 @@ export default function AdminGames() {
   const [importingAppId, setImportingAppId] = useState<string | null>(null);
   const [downloadLinkInput, setDownloadLinkInput] = useState("");
 
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [filterActive, setFilterActive] = useState("all");
+  const [searchFilter, setSearchFilter] = useState("");
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -52,6 +56,10 @@ export default function AdminGames() {
 
   const { data: games, isLoading } = useQuery<Game[]>({
     queryKey: ["/api/games"],
+  });
+
+  const { data: gameStats } = useQuery<Record<string, { downloads: number; inLibrary: number }>>({
+    queryKey: ["/api/admin/game-stats"],
   });
 
   const createGameMutation = useMutation({
@@ -127,6 +135,18 @@ export default function AdminGames() {
       toast({ title: "Error importing game", description: error.message, variant: "destructive" });
     },
   });
+
+  const filteredGames = games?.filter(game => {
+    const matchesSearch = game.title.toLowerCase().includes(searchFilter.toLowerCase()) ||
+                         game.description.toLowerCase().includes(searchFilter.toLowerCase());
+    const matchesCategory = filterCategory === "all" || game.category === filterCategory;
+    const matchesActive = filterActive === "all" || 
+                         (filterActive === "active" && game.isActive) ||
+                         (filterActive === "inactive" && !game.isActive);
+    return matchesSearch && matchesCategory && matchesActive;
+  }) || [];
+
+  const categories = Array.from(new Set(games?.map(g => g.category) || []));
 
   const searchSteam = async () => {
     if (!steamSearchQuery.trim()) return;
@@ -205,249 +225,283 @@ export default function AdminGames() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1
-            className="text-3xl font-bold mb-2"
-            style={{ fontFamily: "Montserrat, sans-serif" }}
-            data-testid="text-admin-games-title"
-          >
-            Manage Games
-          </h1>
-          <p className="text-muted-foreground" data-testid="text-admin-games-subtitle">
-            Add, edit, and remove games from your library
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Dialog open={isSteamImportOpen} onOpenChange={setIsSteamImportOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline">
-                <Download className="w-4 h-4 mr-2" />
-                Import from Steam
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Import Game from Steam</DialogTitle>
-                <DialogDescription>
-                  Search for a game on Steam to automatically import details, screenshots, and trailers
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Search Steam games..."
-                    value={steamSearchQuery}
-                    onChange={(e) => setSteamSearchQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && searchSteam()}
-                  />
-                  <Button onClick={searchSteam} disabled={steamImportMutation.isPending}>Search</Button>
-                </div>
-                {importingAppId ? (
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="font-semibold mb-2">Importing Game</h4>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Game details and screenshots will be imported from Steam. 
-                        Provide a download link to make the game active immediately.
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="downloadLink">Download Link (Optional)</Label>
-                      <Input
-                        id="downloadLink"
-                        type="url"
-                        placeholder="https://example.com/game-download.zip"
-                        value={downloadLinkInput}
-                        onChange={(e) => setDownloadLinkInput(e.target.value)}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Leave empty to add the download link later by editing the game
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button 
-                        onClick={confirmImport} 
-                        disabled={steamImportMutation.isPending}
-                        className="flex-1"
-                      >
-                        {steamImportMutation.isPending ? "Importing..." : "Import Game"}
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        onClick={() => {
-                          setImportingAppId(null);
-                          setDownloadLinkInput("");
-                        }}
-                        disabled={steamImportMutation.isPending}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1
+              className="text-3xl font-bold mb-2"
+              style={{ fontFamily: "Montserrat, sans-serif" }}
+              data-testid="text-admin-games-title"
+            >
+              Manage Games
+            </h1>
+            <p className="text-muted-foreground" data-testid="text-admin-games-subtitle">
+              Add, edit, and remove games from your library
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Dialog open={isSteamImportOpen} onOpenChange={setIsSteamImportOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <Download className="w-4 h-4 mr-2" />
+                  Import from Steam
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Import Game from Steam</DialogTitle>
+                  <DialogDescription>
+                    Search for a game on Steam to automatically import details, screenshots, and trailers
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Search Steam games..."
+                      value={steamSearchQuery}
+                      onChange={(e) => setSteamSearchQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && searchSteam()}
+                    />
+                    <Button onClick={searchSteam} disabled={steamImportMutation.isPending}>Search</Button>
                   </div>
-                ) : (
-                  <div className="max-h-96 overflow-y-auto space-y-2">
-                    {steamSearchResults.map((result) => (
-                      <Card key={result.appId} className="p-4 cursor-pointer hover:bg-accent" onClick={() => handleImportGame(result.appId)}>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="font-semibold">{result.name}</h4>
-                            <p className="text-sm text-muted-foreground">App ID: {result.appId}</p>
+                  {importingAppId ? (
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="font-semibold mb-2">Importing Game</h4>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Game details and screenshots will be imported from Steam. 
+                          Provide a download link to make the game active immediately.
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="downloadLink">Download Link (Optional)</Label>
+                        <Input
+                          id="downloadLink"
+                          type="url"
+                          placeholder="https://example.com/game-download.zip"
+                          value={downloadLinkInput}
+                          onChange={(e) => setDownloadLinkInput(e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Leave empty to add the download link later by editing the game
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          onClick={confirmImport} 
+                          disabled={steamImportMutation.isPending}
+                          className="flex-1"
+                        >
+                          {steamImportMutation.isPending ? "Importing..." : "Import Game"}
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => {
+                            setImportingAppId(null);
+                            setDownloadLinkInput("");
+                          }}
+                          disabled={steamImportMutation.isPending}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="max-h-96 overflow-y-auto space-y-2">
+                      {steamSearchResults.map((result) => (
+                        <Card key={result.appId} className="p-4 cursor-pointer hover:bg-accent" onClick={() => handleImportGame(result.appId)}>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h4 className="font-semibold">{result.name}</h4>
+                              <p className="text-sm text-muted-foreground">App ID: {result.appId}</p>
+                            </div>
+                            <Button size="sm">
+                              Select
+                            </Button>
                           </div>
-                          <Button size="sm">
-                            Select
-                          </Button>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </DialogContent>
-          </Dialog>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={resetForm} data-testid="button-add-game">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Game
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle data-testid="text-dialog-title">
-                  {editingGame ? "Edit Game" : "Add New Game"}
-                </DialogTitle>
-                <DialogDescription data-testid="text-dialog-description">
-                  {editingGame ? "Update game information" : "Add a new game to the library"}
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title" data-testid="label-game-title">
-                    Title
-                  </Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    required
-                    data-testid="input-game-title"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description" data-testid="label-game-description">
-                    Description
-                  </Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows={4}
-                    required
-                    data-testid="input-game-description"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="imageUrl" data-testid="label-game-image">
-                    Image URL (460x215 recommended)
-                  </Label>
-                  <Input
-                    id="imageUrl"
-                    type="url"
-                    value={formData.imageUrl}
-                    onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                    placeholder="https://example.com/image.jpg"
-                    required
-                    data-testid="input-game-image"
-                  />
-                  {formData.imageUrl && (
-                    <div className="aspect-[460/215] rounded-lg overflow-hidden border">
-                      <img
-                        src={formData.imageUrl}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
-                        data-testid="img-game-preview"
-                      />
+                        </Card>
+                      ))}
                     </div>
                   )}
                 </div>
+              </DialogContent>
+            </Dialog>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={resetForm} data-testid="button-add-game">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Game
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle data-testid="text-dialog-title">
+                    {editingGame ? "Edit Game" : "Add New Game"}
+                  </DialogTitle>
+                  <DialogDescription data-testid="text-dialog-description">
+                    {editingGame ? "Update game information" : "Add a new game to the library"}
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="title" data-testid="label-game-title">
+                      Title
+                    </Label>
+                    <Input
+                      id="title"
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      required
+                      data-testid="input-game-title"
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="downloadUrl" data-testid="label-game-download">
-                    Download URL
-                  </Label>
-                  <Input
-                    id="downloadUrl"
-                    type="url"
-                    value={formData.downloadUrl}
-                    onChange={(e) => setFormData({ ...formData, downloadUrl: e.target.value })}
-                    placeholder="https://example.com/download"
-                    required
-                    data-testid="input-game-download"
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description" data-testid="label-game-description">
+                      Description
+                    </Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      rows={4}
+                      required
+                      data-testid="input-game-description"
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="category" data-testid="label-game-category">
-                    Category
-                  </Label>
-                  <Input
-                    id="category"
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    placeholder="Action, RPG, Strategy, etc."
-                    required
-                    data-testid="input-game-category"
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="imageUrl" data-testid="label-game-image">
+                      Image URL (460x215 recommended)
+                    </Label>
+                    <Input
+                      id="imageUrl"
+                      type="url"
+                      value={formData.imageUrl}
+                      onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                      placeholder="https://example.com/image.jpg"
+                      required
+                      data-testid="input-game-image"
+                    />
+                    {formData.imageUrl && (
+                      <div className="aspect-[460/215] rounded-lg overflow-hidden border">
+                        <img
+                          src={formData.imageUrl}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                          data-testid="img-game-preview"
+                        />
+                      </div>
+                    )}
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="tags" data-testid="label-game-tags">
-                    Tags (comma-separated)
-                  </Label>
-                  <Input
-                    id="tags"
-                    value={formData.tags}
-                    onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                    placeholder="Multiplayer, Singleplayer, Co-op"
-                    data-testid="input-game-tags"
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="downloadUrl" data-testid="label-game-download">
+                      Download URL
+                    </Label>
+                    <Input
+                      id="downloadUrl"
+                      type="url"
+                      value={formData.downloadUrl}
+                      onChange={(e) => setFormData({ ...formData, downloadUrl: e.target.value })}
+                      placeholder="https://example.com/download"
+                      required
+                      data-testid="input-game-download"
+                    />
+                  </div>
 
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="featured"
-                    checked={formData.featured}
-                    onCheckedChange={(checked) => setFormData({ ...formData, featured: checked })}
-                    data-testid="switch-game-featured"
-                  />
-                  <Label htmlFor="featured" data-testid="label-game-featured">
-                    Featured Game
-                  </Label>
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="category" data-testid="label-game-category">
+                      Category
+                    </Label>
+                    <Input
+                      id="category"
+                      value={formData.category}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      placeholder="Action, RPG, Strategy, etc."
+                      required
+                      data-testid="input-game-category"
+                    />
+                  </div>
 
-                <div className="flex gap-3 pt-4">
-                  <Button type="submit" className="flex-1" data-testid="button-save-game">
-                    {editingGame ? "Update Game" : "Create Game"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      resetForm();
-                      setIsDialogOpen(false);
-                    }}
-                    data-testid="button-cancel-game"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+                  <div className="space-y-2">
+                    <Label htmlFor="tags" data-testid="label-game-tags">
+                      Tags (comma-separated)
+                    </Label>
+                    <Input
+                      id="tags"
+                      value={formData.tags}
+                      onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                      placeholder="Multiplayer, Singleplayer, Co-op"
+                      data-testid="input-game-tags"
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="featured"
+                      checked={formData.featured}
+                      onCheckedChange={(checked) => setFormData({ ...formData, featured: checked })}
+                      data-testid="switch-game-featured"
+                    />
+                    <Label htmlFor="featured" data-testid="label-game-featured">
+                      Featured Game
+                    </Label>
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <Button type="submit" className="flex-1" data-testid="button-save-game">
+                      {editingGame ? "Update Game" : "Create Game"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        resetForm();
+                        setIsDialogOpen(false);
+                      }}
+                      data-testid="button-cancel-game"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
+        
+        <div className="flex gap-4 mb-6">
+          <Input
+            placeholder="Search games..."
+            value={searchFilter}
+            onChange={(e) => setSearchFilter(e.target.value)}
+            className="max-w-sm"
+          />
+          <select
+            value={filterCategory}
+            onChange={(e) => setFilterCategory(e.target.value)}
+            className="px-3 py-2 border rounded-md"
+          >
+            <option value="all">All Categories</option>
+            {categories.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+          <select
+            value={filterActive}
+            onChange={(e) => setFilterActive(e.target.value)}
+            className="px-3 py-2 border rounded-md"
+          >
+            <option value="all">All Status</option>
+            <option value="active">Active Only</option>
+            <option value="inactive">Inactive Only</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        
       </div>
 
       <Card>
@@ -455,20 +509,21 @@ export default function AdminGames() {
           <div className="p-12 text-center">
             <p className="text-muted-foreground">Loading games...</p>
           </div>
-        ) : games && games.length > 0 ? (
+        ) : filteredGames && filteredGames.length > 0 ? (
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead data-testid="header-image">Image</TableHead>
                 <TableHead data-testid="header-title">Title</TableHead>
                 <TableHead data-testid="header-category">Category</TableHead>
-                <TableHead data-testid="header-tags">Tags</TableHead>
+                <TableHead data-testid="header-stats">Stats</TableHead>
+                <TableHead data-testid="header-status">Status</TableHead>
                 <TableHead data-testid="header-featured">Featured</TableHead>
                 <TableHead data-testid="header-actions">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {games.map((game) => (
+              {filteredGames.map((game) => (
                 <TableRow key={game.id} data-testid={`row-game-${game.id}`}>
                   <TableCell>
                     <img
@@ -485,13 +540,21 @@ export default function AdminGames() {
                     {game.category}
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-1 flex-wrap">
-                      {game.tags?.slice(0, 2).map((tag) => (
-                        <Badge key={tag} variant="secondary" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
+                    <div className="text-xs space-y-1">
+                      <div>📥 {gameStats?.[game.id]?.downloads || 0} downloads</div>
+                      <div>📚 {gameStats?.[game.id]?.inLibrary || 0} in library</div>
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={game.isActive}
+                      onCheckedChange={(checked) => {
+                        updateGameMutation.mutate({ 
+                          id: game.id, 
+                          data: { isActive: checked } 
+                        });
+                      }}
+                    />
                   </TableCell>
                   <TableCell>
                     {game.featured && (

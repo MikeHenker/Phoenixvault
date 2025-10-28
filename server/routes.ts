@@ -437,6 +437,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin Routes - Game Stats (New endpoint)
+  app.get("/api/admin/game-stats", requireAdmin, async (req, res) => {
+    try {
+      const stats = await storage.getGameStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching game stats:", error);
+      res.status(500).json({ message: "Failed to fetch game stats" });
+    }
+  });
+
+
   // Admin Routes - Bulk Operations
   app.post("/api/admin/games/bulk-delete", requireAdmin, async (req, res) => {
     try {
@@ -1063,7 +1075,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Build comprehensive description
-      const fullDescription = steamData.fullDescription 
+      const fullDescription = steamData.fullDescription
         ? steamData.fullDescription.replace(/<[^>]*>/g, '').slice(0, 1000)
         : steamData.shortDescription || '';
 
@@ -1096,8 +1108,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      res.json({ 
-        game, 
+      res.json({
+        game,
         steamData: {
           name: steamData.name,
           developers: steamData.developers,

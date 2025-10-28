@@ -200,6 +200,30 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(downloads).where(eq(downloads.userId, userId));
   }
 
+  async getGameStats(): Promise<Record<string, { downloads: number; inLibrary: number }>> {
+    const allGames = await this.getGames();
+    const stats: Record<string, { downloads: number; inLibrary: number }> = {};
+
+    for (const game of allGames) {
+      const [downloadCount] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(downloads)
+        .where(eq(downloads.gameId, game.id));
+
+      const [libraryCount] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(userLibrary)
+        .where(eq(userLibrary.gameId, game.id));
+
+      stats[game.id] = {
+        downloads: Number(downloadCount.count) || 0,
+        inLibrary: Number(libraryCount.count) || 0,
+      };
+    }
+
+    return stats;
+  }
+
   async getTotalDownloads(): Promise<number> {
     const result = await db.select({ count: sql<number>`count(*)` }).from(downloads);
     return Number(result[0].count);
