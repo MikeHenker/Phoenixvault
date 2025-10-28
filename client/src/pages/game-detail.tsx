@@ -276,7 +276,7 @@ export default function GameDetail() {
                       <Button
                         size="lg"
                         className="w-full"
-                        onClick={() => setLocation("/auth/login")}
+                        onClick={() => setLocation("/login")}
                         data-testid="button-login-to-download"
                       >
                         Sign in to Download

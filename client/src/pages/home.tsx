@@ -22,7 +22,7 @@ export default function Home() {
   // Redirect to registration if not logged in
   useEffect(() => {
     if (!isLoading && session && !session.user) {
-      setLocation("/auth/register");
+      setLocation("/register");
     }
   }, [session, isLoading, setLocation]);
 
@@ -92,7 +92,7 @@ export default function Home() {
                       Get Started
                     </Button>
                   </Link>
-                  <Link href="/auth/register">
+                  <Link href="/register">
                     <Button
                       size="lg"
                       variant="outline"

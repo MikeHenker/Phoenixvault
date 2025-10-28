@@ -120,12 +120,12 @@ export default function Navbar() {
               </DropdownMenu>
             ) : (
               <div className="flex items-center gap-3">
-                <Link href="/auth/login">
+                <Link href="/login">
                   <Button variant="ghost" data-testid="button-nav-login">
                     Sign In
                   </Button>
                 </Link>
-                <Link href="/auth/register">
+                <Link href="/register">
                   <Button data-testid="button-nav-register">Register</Button>
                 </Link>
               </div>
