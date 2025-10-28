@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
+import { getSteamGameDetails, searchSteamGames } from "./steam-api";
 
 declare module "express-session" {
   interface SessionData {
@@ -1003,6 +1004,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching recommendations:", error);
       res.status(500).json({ message: "Failed to fetch recommendations" });
+    }
+  });
+
+  // Steam API Integration
+  app.get("/api/steam/search", async (req, res) => {
+    try {
+      const { query } = req.query;
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({ message: "Search query is required" });
+      }
+
+      const results = await searchSteamGames(query);
+      res.json(results);
+    } catch (error) {
+      console.error("Error searching Steam:", error);
+      res.status(500).json({ message: "Failed to search Steam" });
+    }
+  });
+
+  app.get("/api/steam/details/:appId", async (req, res) => {
+    try {
+      const details = await getSteamGameDetails(req.params.appId);
+      if (!details) {
+        return res.status(404).json({ message: "Game not found on Steam" });
+      }
+      res.json(details);
+    } catch (error) {
+      console.error("Error fetching Steam details:", error);
+      res.status(500).json({ message: "Failed to fetch game details from Steam" });
+    }
+  });
+
+  app.post("/api/admin/games/import-steam", requireAdmin, async (req, res) => {
+    try {
+      const { appId } = req.body;
+      if (!appId) {
+        return res.status(400).json({ message: "Steam App ID is required" });
+      }
+
+      const steamData = await getSteamGameDetails(appId);
+      if (!steamData) {
+        return res.status(404).json({ message: "Game not found on Steam" });
+      }
+
+      // Create game with Steam data
+      const game = await storage.createGame({
+        title: steamData.name,
+        description: steamData.shortDescription,
+        imageUrl: steamData.headerImage,
+        category: steamData.genres[0] || 'Action',
+        tags: steamData.genres,
+        downloadUrl: '', // Admin needs to provide this
+        releaseDate: steamData.releaseDate,
+        developer: steamData.developers[0] || '',
+        publisher: steamData.publishers[0] || '',
+        isActive: true,
+        averageRating: 0,
+        totalReviews: 0,
+      });
+
+      // Create screenshots
+      for (const screenshot of steamData.screenshots.slice(0, 6)) {
+        await storage.createScreenshot({
+          gameId: game.id,
+          userId: req.session.userId!,
+          imageUrl: screenshot.pathFull,
+          caption: null,
+        });
+      }
+
+      res.json({ game, steamData });
+    } catch (error) {
+      console.error("Error importing from Steam:", error);
+      res.status(500).json({ message: "Failed to import game from Steam" });
     }
   });
 

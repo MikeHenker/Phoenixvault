@@ -10,6 +10,7 @@ import { Download, ArrowLeft, Calendar, Plus, Check, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Game } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { Separator } from "@/components/ui/separator";
 
 export default function GameDetail() {
   const [, params] = useRoute("/game/:id");
@@ -31,14 +32,29 @@ export default function GameDetail() {
     enabled: !!params?.id && !!session?.user,
   });
 
-  const { data: libraryEntry } = useQuery<any>({
+  const { data: libraryEntry } = useQuery({
     queryKey: ["/api/library/entry", params?.id],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/library");
-      const library = await response.json();
-      return library.find((entry: any) => entry.gameId === params?.id);
+      const response = await fetch(`/api/library/check/${params?.id}`, {
+        credentials: "include",
+      });
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data.inLibrary ? { gameId: params?.id } : null;
     },
-    enabled: !!params?.id && !!session?.user && libraryCheck?.inLibrary,
+    enabled: !!params?.id && !!session?.user,
+  });
+
+  const { data: screenshots } = useQuery({
+    queryKey: ["/api/games", params?.id, "screenshots"],
+    queryFn: async () => {
+      const response = await fetch(`/api/games/${params?.id}/screenshots`, {
+        credentials: "include",
+      });
+      if (!response.ok) return [];
+      return response.json();
+    },
+    enabled: !!params?.id,
   });
 
   const addToLibraryMutation = useMutation({
@@ -284,7 +300,7 @@ export default function GameDetail() {
                           )) || <p className="text-sm text-muted-foreground">No tags</p>}
                         </div>
                       </div>
-                      
+
                       {libraryCheck?.inLibrary && (
                         <div className="pt-4 border-t space-y-3">
                           <div className="flex items-center space-x-2">
@@ -303,7 +319,7 @@ export default function GameDetail() {
                               I have the game files
                             </Label>
                           </div>
-                          
+
                           {libraryEntry?.hasLocalFiles && (
                             <div className="space-y-2">
                               <Label htmlFor="exePath" className="text-sm">
@@ -369,6 +385,34 @@ export default function GameDetail() {
             </div>
           </div>
         </Card>
+
+        <Separator />
+
+        {/* Screenshots Gallery */}
+        {screenshots && screenshots.length > 0 && (
+          <div className="space-y-6">
+            <h3 className="text-2xl font-bold">Screenshots</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {screenshots.map((screenshot: any) => (
+                <div key={screenshot.id} className="aspect-video overflow-hidden rounded-lg">
+                  <img
+                    src={screenshot.imageUrl}
+                    alt={screenshot.caption || "Game screenshot"}
+                    className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
+                    onClick={() => window.open(screenshot.imageUrl, '_blank')}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <Separator />
+
+        {/* Reviews Section */}
+        <div className="space-y-6">
+          <h3 className="text-2xl font-bold">Reviews</h3>
+        </div>
       </div>
     </div>
   );
