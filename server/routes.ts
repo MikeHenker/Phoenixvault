@@ -299,6 +299,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/library/:gameId", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const libraryEntry = await storage.getLibraryEntry(req.session.userId, req.params.gameId);
+      res.json(libraryEntry);
+    } catch (error) {
+      console.error("Error fetching library entry:", error);
+      res.status(500).json({ message: "Failed to fetch library entry" });
+    }
+  });
+
   // Admin middleware
   const requireAdmin = async (req: any, res: any, next: any) => {
     if (!req.session.userId) {
@@ -1069,6 +1083,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         downloadUrl: downloadUrl || '', // Admin provides this or can edit later
         featured: false,
         isActive: !!downloadUrl, // Only active if download link provided
+        steamAppId: appId,
       });
 
       // Create screenshots (up to 8)

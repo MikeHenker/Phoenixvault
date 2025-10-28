@@ -63,6 +63,7 @@ export interface IStorage {
   removeFromLibrary(userId: string, gameId: string): Promise<void>;
   updateLibraryEntry(userId: string, gameId: string, data: { hasLocalFiles?: boolean; exePath?: string }): Promise<UserLibrary>;
   getUserLibrary(userId: string): Promise<UserLibrary[]>;
+  getLibraryEntry(userId: string, gameId: string): Promise<UserLibrary | undefined>;
   isInLibrary(userId: string, gameId: string): Promise<boolean>;
 
   // Reviews and Ratings
@@ -237,6 +238,19 @@ export class DatabaseStorage implements IStorage {
 
   async getUserLibrary(userId: string): Promise<UserLibrary[]> {
     return await db.select().from(userLibrary).where(eq(userLibrary.userId, userId));
+  }
+
+  async getLibraryEntry(userId: string, gameId: string): Promise<UserLibrary | undefined> {
+    const [entry] = await db
+      .select()
+      .from(userLibrary)
+      .where(
+        and(
+          eq(userLibrary.userId, userId),
+          eq(userLibrary.gameId, gameId)
+        )
+      );
+    return entry || undefined;
   }
 
   async isInLibrary(userId: string, gameId: string): Promise<boolean> {
