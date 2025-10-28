@@ -39,7 +39,7 @@ export default function Login() {
         title: "Welcome back!",
         description: data.isAdmin ? "Logged in as admin" : "Successfully logged in",
       });
-      setLocation(data.isAdmin ? "/admin" : "/library");
+      setLocation(data.user.isAdmin ? "/admin" : "/library");
     },
     onError: (error: Error) => {
       toast({
@@ -164,7 +164,7 @@ export default function Login() {
                 <Button
                   variant="link"
                   className="p-0 h-auto"
-                  onClick={() => setLocation("/auth/register")}
+                  onClick={() => setLocation("/register")}
                   data-testid="button-register-link"
                 >
                   Register here

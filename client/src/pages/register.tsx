@@ -38,7 +38,7 @@ export default function Register() {
         title: "Registration successful!",
         description: "Your account is pending admin approval. You'll be able to log in once approved.",
       });
-      setLocation("/auth/login");
+      setLocation("/login");
     },
     onError: (error: Error) => {
       toast({
@@ -157,7 +157,7 @@ export default function Register() {
                 <Button
                   variant="link"
                   className="p-0 h-auto"
-                  onClick={() => setLocation("/auth/login")}
+                  onClick={() => setLocation("/login")}
                   data-testid="button-login-link"
                 >
                   Sign in here
