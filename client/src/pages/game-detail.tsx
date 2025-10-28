@@ -6,17 +6,21 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Download, ArrowLeft, Calendar, Plus, Check, Play } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Download, ArrowLeft, Calendar, Plus, Check, Play, Monitor, Apple, type LucideIcon } from "lucide-react";
+import { SiLinux, SiWindows } from "react-icons/si";
 import { useToast } from "@/hooks/use-toast";
 import type { Game } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { Separator } from "@/components/ui/separator";
+import { useState } from "react";
 
 export default function GameDetail() {
   const [, params] = useRoute("/game/:id");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
 
   const { data: game, isLoading } = useQuery<Game>({
     queryKey: ["/api/games", params?.id],
@@ -55,6 +59,19 @@ export default function GameDetail() {
       return response.json();
     },
     enabled: !!params?.id,
+  });
+
+  const { data: steamData } = useQuery<any>({
+    queryKey: ["/api/steam/details", game?.steamAppId],
+    queryFn: async () => {
+      if (!game?.steamAppId) return null;
+      const response = await fetch(`/api/steam/details/${game.steamAppId}`, {
+        credentials: "include",
+      });
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: !!game?.steamAppId,
   });
 
   const addToLibraryMutation = useMutation({
@@ -155,6 +172,12 @@ export default function GameDetail() {
     );
   }
 
+  const platformIcons: Record<string, LucideIcon | any> = {
+    windows: SiWindows,
+    mac: Apple,
+    linux: SiLinux,
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-6 py-12">
@@ -172,7 +195,7 @@ export default function GameDetail() {
           {/* Hero Image */}
           <div className="relative aspect-[21/9] overflow-hidden bg-muted">
             <img
-              src={game.imageUrl}
+              src={steamData?.background || game.imageUrl}
               alt={game.title}
               className="w-full h-full object-cover"
               data-testid="img-game-hero"
@@ -193,7 +216,7 @@ export default function GameDetail() {
                   >
                     {game.title}
                   </h1>
-                  <div className="flex items-center gap-3 mb-4">
+                  <div className="flex items-center gap-3 mb-4 flex-wrap">
                     <Badge variant="secondary" data-testid="badge-game-category">
                       {game.category}
                     </Badge>
@@ -202,7 +225,45 @@ export default function GameDetail() {
                         Featured
                       </Badge>
                     )}
+                    {steamData?.platforms && (
+                      <div className="flex gap-2 items-center">
+                        {steamData.platforms.windows && (
+                          <div className="flex items-center gap-1" data-testid="badge-platform-windows">
+                            <SiWindows className="w-4 h-4" />
+                          </div>
+                        )}
+                        {steamData.platforms.mac && (
+                          <div className="flex items-center gap-1" data-testid="badge-platform-mac">
+                            <Apple className="w-4 h-4" />
+                          </div>
+                        )}
+                        {steamData.platforms.linux && (
+                          <div className="flex items-center gap-1" data-testid="badge-platform-linux">
+                            <SiLinux className="w-4 h-4" />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {steamData?.metacritic && (
+                      <Badge variant="outline" className="border-green-500 text-green-500" data-testid="badge-metacritic">
+                        Metacritic: {steamData.metacritic}
+                      </Badge>
+                    )}
+                    {steamData?.achievements?.total > 0 && (
+                      <Badge variant="outline" data-testid="badge-achievements">
+                        {steamData.achievements.total} Achievements
+                      </Badge>
+                    )}
                   </div>
+                  {steamData?.categories && steamData.categories.length > 0 && (
+                    <div className="flex gap-2 flex-wrap mb-4">
+                      {steamData.categories.slice(0, 6).map((category: string) => (
+                        <Badge key={category} variant="secondary" className="text-xs" data-testid={`badge-category-${category}`}>
+                          {category}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                   {game.tags && game.tags.length > 0 && (
                     <div className="flex gap-2 flex-wrap">
                       {game.tags.map((tag) => (
@@ -221,14 +282,25 @@ export default function GameDetail() {
                   <div 
                     className="text-muted-foreground leading-relaxed whitespace-pre-line" 
                     data-testid="text-game-description"
-                    dangerouslySetInnerHTML={{ __html: game.description }}
+                    dangerouslySetInnerHTML={{ __html: steamData?.aboutTheGame || game.description }}
                   />
                 </div>
+
+                {steamData?.recommendations > 0 && (
+                  <div className="flex items-center gap-4 text-sm">
+                    <div>
+                      <span className="font-semibold text-lg" data-testid="text-recommendations">
+                        {steamData.recommendations.toLocaleString()}
+                      </span>
+                      <span className="text-muted-foreground ml-2">Recommendations</span>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Calendar className="w-4 h-4" />
                   <span data-testid="text-release-date">
-                    Added {new Date(game.createdAt).toLocaleDateString()}
+                    {steamData?.releaseDate || `Added ${new Date(game.createdAt).toLocaleDateString()}`}
                   </span>
                 </div>
               </div>
@@ -286,22 +358,44 @@ export default function GameDetail() {
                     )}
 
                     <div className="pt-4 border-t space-y-3">
+                      {steamData?.price && (
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Price</p>
+                          <p className="font-semibold text-lg" data-testid="text-price">
+                            {steamData.price}
+                          </p>
+                        </div>
+                      )}
                       <div>
                         <p className="text-sm text-muted-foreground mb-1">Category</p>
                         <p className="font-medium" data-testid="text-sidebar-category">
                           {game.category}
                         </p>
                       </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1">Tags</p>
-                        <div className="flex gap-2 flex-wrap">
-                          {game.tags?.map((tag) => (
-                            <Badge key={tag} variant="secondary" className="text-xs">
-                              {tag}
-                            </Badge>
-                          )) || <p className="text-sm text-muted-foreground">No tags</p>}
+                      {steamData?.developers && steamData.developers.length > 0 && (
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Developer</p>
+                          <p className="font-medium" data-testid="text-developer">
+                            {steamData.developers.join(", ")}
+                          </p>
                         </div>
-                      </div>
+                      )}
+                      {steamData?.publishers && steamData.publishers.length > 0 && (
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Publisher</p>
+                          <p className="font-medium" data-testid="text-publisher">
+                            {steamData.publishers.join(", ")}
+                          </p>
+                        </div>
+                      )}
+                      {steamData?.controllerSupport && (
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Controller Support</p>
+                          <p className="font-medium capitalize" data-testid="text-controller">
+                            {steamData.controllerSupport}
+                          </p>
+                        </div>
+                      )}
 
                       {libraryCheck?.inLibrary && (
                         <div className="pt-4 border-t space-y-3">
@@ -388,33 +482,121 @@ export default function GameDetail() {
           </div>
         </Card>
 
-        <Separator />
+        {/* Trailers & Media Section */}
+        {steamData?.movies && steamData.movies.length > 0 && (
+          <>
+            <Separator className="my-8" />
+            <div className="space-y-6">
+              <h3 className="text-2xl font-bold" data-testid="text-trailers-title">Trailers & Videos</h3>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                {steamData.movies.map((movie: any, index: number) => (
+                  <Card
+                    key={movie.id}
+                    className="overflow-hidden cursor-pointer hover-elevate"
+                    onClick={() => setSelectedVideo(movie.webm?.max || movie.webm?.['480'] || movie.mp4?.max || movie.mp4?.['480'])}
+                    data-testid={`card-trailer-${index}`}
+                  >
+                    <div className="relative aspect-video bg-muted">
+                      <img
+                        src={movie.thumbnail}
+                        alt={movie.name}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                        <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center">
+                          <Play className="w-8 h-8 text-black ml-1" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-3">
+                      <p className="text-sm font-medium line-clamp-2" data-testid={`text-trailer-name-${index}`}>
+                        {movie.name}
+                      </p>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
-        {/* Screenshots Gallery */}
-        {screenshots && screenshots.length > 0 && (
-          <div className="space-y-6">
-            <h3 className="text-2xl font-bold">Screenshots</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {screenshots.map((screenshot: any) => (
-                <div key={screenshot.id} className="aspect-video overflow-hidden rounded-lg">
-                  <img
-                    src={screenshot.imageUrl}
-                    alt={screenshot.caption || "Game screenshot"}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
-                    onClick={() => window.open(screenshot.imageUrl, '_blank')}
-                  />
-                </div>
-              ))}
+        {/* Video Player Modal */}
+        {selectedVideo && (
+          <div
+            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+            onClick={() => setSelectedVideo(null)}
+            data-testid="modal-video-player"
+          >
+            <div className="max-w-6xl w-full" onClick={(e) => e.stopPropagation()}>
+              <video
+                src={selectedVideo}
+                controls
+                autoPlay
+                className="w-full rounded-lg"
+                data-testid="video-player"
+              />
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => setSelectedVideo(null)}
+                data-testid="button-close-video"
+              >
+                Close
+              </Button>
             </div>
           </div>
         )}
 
-        <Separator />
+        {/* Screenshots Gallery */}
+        {screenshots && screenshots.length > 0 && (
+          <>
+            <Separator className="my-8" />
+            <div className="space-y-6">
+              <h3 className="text-2xl font-bold" data-testid="text-screenshots-title">Screenshots</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {screenshots.map((screenshot: any) => (
+                  <div key={screenshot.id} className="aspect-video overflow-hidden rounded-lg">
+                    <img
+                      src={screenshot.imageUrl}
+                      alt={screenshot.caption || "Game screenshot"}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
+                      onClick={() => window.open(screenshot.imageUrl, '_blank')}
+                      data-testid={`img-screenshot-${screenshot.id}`}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
-        {/* Reviews Section */}
-        <div className="space-y-6">
-          <h3 className="text-2xl font-bold">Reviews</h3>
-        </div>
+        {/* System Requirements */}
+        {steamData?.pcRequirements && (steamData.pcRequirements.minimum || steamData.pcRequirements.recommended) && (
+          <>
+            <Separator className="my-8" />
+            <div className="space-y-6">
+              <h3 className="text-2xl font-bold" data-testid="text-requirements-title">System Requirements</h3>
+              <div className="grid md:grid-cols-2 gap-6">
+                {steamData.pcRequirements.minimum && (
+                  <Card className="p-6">
+                    <h4 className="font-semibold mb-3" data-testid="text-minimum-requirements">Minimum</h4>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line" data-testid="text-minimum-requirements-content">
+                      {steamData.pcRequirements.minimum}
+                    </p>
+                  </Card>
+                )}
+                {steamData.pcRequirements.recommended && (
+                  <Card className="p-6">
+                    <h4 className="font-semibold mb-3" data-testid="text-recommended-requirements">Recommended</h4>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line" data-testid="text-recommended-requirements-content">
+                      {steamData.pcRequirements.recommended}
+                    </p>
+                  </Card>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

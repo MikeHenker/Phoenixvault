@@ -39,6 +39,7 @@ export const games = pgTable("games", {
   tags: text("tags").array().notNull().default(sql`ARRAY[]::text[]`),
   featured: boolean("featured").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
+  steamAppId: text("steam_app_id"),
   averageRating: integer("average_rating").default(0),
   totalRatings: integer("total_ratings").default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
