@@ -65,10 +65,14 @@ export default function Home() {
             >
               {featuredGames[0]?.title || "The Future of Gaming"}
             </h1>
-            <p className="text-lg text-muted-foreground max-w-xl" data-testid="text-hero-description">
-              {featuredGames[0]?.description ||
-                "Experience premium access to the most anticipated games. Join Phoenix Games today."}
-            </p>
+            <div 
+              className="text-lg text-muted-foreground max-w-xl" 
+              data-testid="text-hero-description"
+              dangerouslySetInnerHTML={{ 
+                __html: featuredGames[0]?.description || 
+                  "Experience premium access to the most anticipated games. Join Phoenix Games today." 
+              }}
+            />
             <div className="flex gap-4 pt-4">
               {session?.user ? (
                 <Link href="/library">

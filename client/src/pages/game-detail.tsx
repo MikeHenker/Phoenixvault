@@ -218,9 +218,11 @@ export default function GameDetail() {
                   <h2 className="text-xl font-semibold mb-3" data-testid="text-about-title">
                     About This Game
                   </h2>
-                  <p className="text-muted-foreground leading-relaxed" data-testid="text-game-description">
-                    {game.description}
-                  </p>
+                  <div 
+                    className="text-muted-foreground leading-relaxed whitespace-pre-line" 
+                    data-testid="text-game-description"
+                    dangerouslySetInnerHTML={{ __html: game.description }}
+                  />
                 </div>
 
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">

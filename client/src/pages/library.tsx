@@ -30,7 +30,7 @@ export default function Library() {
   });
 
   const isLoading = viewMode === "my-library" ? myLibraryLoading : allGamesLoading;
-  
+
   const games = viewMode === "my-library" 
     ? myLibrary?.map(entry => entry.game).filter(Boolean) 
     : allGames;
@@ -186,30 +186,15 @@ export default function Library() {
                   <div className="p-4">
                     <h3
                       className="font-bold text-lg mb-1 line-clamp-1"
-                      data-testid={`text-library-game-title-${game.id}`}
+                      data-testid={`text-game-title-${game.id}`}
                     >
                       {game.title}
                     </h3>
-                    <p
+                    <div
                       className="text-sm text-muted-foreground line-clamp-2"
-                      data-testid={`text-library-game-category-${game.id}`}
-                    >
-                      {game.category}
-                    </p>
-                    {game.tags && game.tags.length > 0 && (
-                      <div className="flex gap-2 mt-3 flex-wrap">
-                        {game.tags.slice(0, 3).map((tag) => (
-                          <Badge
-                            key={tag}
-                            variant="secondary"
-                            className="text-xs"
-                            data-testid={`badge-library-tag-${tag}`}
-                          >
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
+                      data-testid={`text-game-description-${game.id}`}
+                      dangerouslySetInnerHTML={{ __html: game.description }}
+                    />
                   </div>
                 </Card>
               </Link>
