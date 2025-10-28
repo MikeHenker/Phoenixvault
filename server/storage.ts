@@ -184,9 +184,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteGame(id: string): Promise<void> {
-    // First delete all downloads associated with this game
+    // Delete all related records first to avoid foreign key constraint violations
+    await db.delete(screenshots).where(eq(screenshots.gameId, id));
+    await db.delete(comments).where(eq(comments.gameId, id));
+    await db.delete(playtime).where(eq(playtime.gameId, id));
+    await db.delete(userAchievements).where(
+      sql`${userAchievements.achievementId} IN (SELECT id FROM ${achievements} WHERE ${achievements.gameId} = ${id})`
+    );
+    await db.delete(achievements).where(eq(achievements.gameId, id));
+    await db.delete(reviews).where(eq(reviews.gameId, id));
+    await db.delete(wishlist).where(eq(wishlist.gameId, id));
+    await db.delete(userLibrary).where(eq(userLibrary.gameId, id));
     await db.delete(downloads).where(eq(downloads.gameId, id));
-    // Then delete the game
+    await db.delete(activities).where(eq(activities.gameId, id));
+    // Finally delete the game itself
     await db.delete(games).where(eq(games.id, id));
   }
 
