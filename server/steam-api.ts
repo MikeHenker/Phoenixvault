@@ -146,13 +146,31 @@ export async function getSteamGameDetails(appId: string): Promise<SteamGameDetai
     const parseRequirements = (req: any) => ({
       minimum: req?.minimum ? req.minimum
         .replace(/<br\s*\/?>/gi, '\n')
-        .replace(/<\/?(ul|li|strong|p)>/gi, '')
+        .replace(/<\/li>/gi, '\n')
+        .replace(/<li>/gi, '• ')
+        .replace(/<strong>/gi, '')
+        .replace(/<\/strong>/gi, ': ')
+        .replace(/<\/p>/gi, '\n')
+        .replace(/<p>/gi, '')
+        .replace(/<ul>/gi, '')
+        .replace(/<\/ul>/gi, '\n')
         .replace(/<[^>]*>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/\n\s*\n/g, '\n')
         .trim() : '',
       recommended: req?.recommended ? req.recommended
         .replace(/<br\s*\/?>/gi, '\n')
-        .replace(/<\/?(ul|li|strong|p)>/gi, '')
+        .replace(/<\/li>/gi, '\n')
+        .replace(/<li>/gi, '• ')
+        .replace(/<strong>/gi, '')
+        .replace(/<\/strong>/gi, ': ')
+        .replace(/<\/p>/gi, '\n')
+        .replace(/<p>/gi, '')
+        .replace(/<ul>/gi, '')
+        .replace(/<\/ul>/gi, '\n')
         .replace(/<[^>]*>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/\n\s*\n/g, '\n')
         .trim() : ''
     });
 
