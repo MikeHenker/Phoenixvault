@@ -322,10 +322,11 @@ export default function GameDetail() {
                 About This Game
               </h2>
               <div 
-                className="text-muted-foreground leading-relaxed" 
+                className="text-muted-foreground leading-relaxed whitespace-pre-wrap" 
                 data-testid="text-game-description"
-                dangerouslySetInnerHTML={{ __html: steamData?.aboutTheGame || game.description }}
-              />
+              >
+                {steamData?.aboutTheGame || game.description}
+              </div>
             </Card>
 
             {/* Features & Categories */}

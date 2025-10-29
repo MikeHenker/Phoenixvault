@@ -176,14 +176,36 @@ export async function getSteamGameDetails(appId: string): Promise<SteamGameDetai
         .trim() : ''
     });
 
+    // Helper function to properly format description HTML
+    const formatDescription = (html: string) => {
+      if (!html) return '';
+      return html
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/p>/gi, '\n\n')
+        .replace(/<p>/gi, '')
+        .replace(/<\/li>/gi, '\n')
+        .replace(/<li>/gi, '• ')
+        .replace(/<\/ul>/gi, '\n')
+        .replace(/<ul>/gi, '')
+        .replace(/<\/h[1-6]>/gi, '\n\n')
+        .replace(/<h[1-6]>/gi, '')
+        .replace(/<strong>/gi, '')
+        .replace(/<\/strong>/gi, '')
+        .replace(/<[^>]*>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/\n\s*\n\s*\n+/g, '\n\n')
+        .replace(/^\s+/gm, '')
+        .trim();
+    };
+
     return {
       appId,
       name: gameData.name || '',
       type: gameData.type || 'game',
       shortDescription: gameData.short_description || '',
-      detailedDescription: stripHtml(gameData.detailed_description) || gameData.short_description || '',
-      fullDescription: stripHtml(gameData.detailed_description) || gameData.short_description || '',
-      aboutTheGame: stripHtml(gameData.about_the_game) || gameData.short_description || '',
+      detailedDescription: formatDescription(gameData.detailed_description) || gameData.short_description || '',
+      fullDescription: formatDescription(gameData.detailed_description) || gameData.short_description || '',
+      aboutTheGame: formatDescription(gameData.about_the_game) || gameData.short_description || '',
       headerImage: gameData.header_image || '',
       background: gameData.background || '',
       backgroundRaw: gameData.background_raw || '',
