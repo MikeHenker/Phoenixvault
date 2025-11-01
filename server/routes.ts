@@ -107,9 +107,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
+        if (!adminUser) {
+          return res.status(500).json({ message: "Failed to create admin user" });
+        }
+
         req.session.userId = adminUser.id;
         const { password: _, ...userWithoutPassword } = adminUser;
-        return res.json({ user: userWithoutPassword, isAdmin: true });
+        return res.json({ user: userWithoutPassword, isAdmin: adminUser.isAdmin });
       }
 
       // Regular user login
@@ -1130,3 +1134,4 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   return httpServer;
 }
+ 
